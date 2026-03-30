@@ -1,0 +1,46 @@
+name: Gerar Posts Dra. Julga
+
+on:
+  schedule:
+    # Horários em UTC (Brasil = UTC-3)
+    # 12h BRT = 15h UTC
+    - cron: '0 15 * * *'
+    # 18h BRT = 21h UTC
+    - cron: '0 21 * * *'
+    # 21h BRT = 00h UTC (dia seguinte)
+    - cron: '0 0 * * *'
+  
+  # Permite rodar manualmente pelo GitHub
+  workflow_dispatch:
+
+jobs:
+  gerar-posts:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependências
+        run: |
+          pip install anthropic python-dotenv
+
+      - name: Gerar posts do dia
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd content-engine
+          python generate_posts.py
+
+      - name: Salvar posts gerados no repositório
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add content-engine/generated/
+          git diff --staged --quiet || git commit -m "auto: posts gerados $(date +'%Y-%m-%d %H:%M UTC')"
+          git push
