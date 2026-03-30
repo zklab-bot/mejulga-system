@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Administrator/Documents/ZK LAB/Claude Code/Projetos/mejulga-system/**)",
+      "Bash(done)",
+      "Bash(find . -not -path */.* -type f)",
+      "Bash(find '/c/Users/Administrator/Documents/ZK LAB/Claude Code/Projetos/mejulga-system' -name *.tsx -o -name *.jsx)",
+      "Bash(find /c/Users/Administrator -maxdepth 6 -name package.json -not -path */node_modules/*)",
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/Administrator -maxdepth 8 -name *.tsx -not -path */node_modules/*)",
+      "Bash(grep -r \"mejulga\\\\|julga\\\\|Julga\" '/c/Users/Administrator/Documents/ZK LAB/Claude Code/Projetos/connecta/src' --include=*.tsx --include=*.ts -l)",
+      "Bash(find /c/Users/Administrator/Documents -maxdepth 8 -name App.tsx -not -path */node_modules/*)",
+      "Bash(grep -E \"\\\\.\\(tsx?|css|scss\\)$\")",
+      "Bash(npm run:*)",
+      "Bash(find 'C:/Users/Administrator/Documents/ZK LAB/Claude Code/Projetos/mejulga-system' -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(find 'C:/Users/Administrator/Documents/ZK LAB/Claude Code/Projetos' -type f \\\\\\(-name *[Qq]uiz* -o -name *[Rr]esult* \\\\\\))",
+      "Bash(find '/c/Users/Administrator/Documents/ZK LAB/Claude Code/Projetos' -maxdepth 3 -name *.tsx -o -name *.jsx)"
+    ]
+  }
+}

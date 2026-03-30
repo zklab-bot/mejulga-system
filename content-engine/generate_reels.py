@@ -1,0 +1,216 @@
+"""
+generate_reels.py
+Gera roteiro de Reels + áudio com voz da Dra. Julga via ElevenLabs.
+Uso: python generate_reels.py --categoria dinheiro
+"""
+
+import anthropic
+import os
+import json
+import argparse
+import requests
+from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ─── Configuração ─────────────────────────────────────────────────────────────
+
+claude_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
+
+CATEGORIAS_INFO = {
+    "dinheiro": {"label": "Dinheiro", "emoji": "💸"},
+    "amor": {"label": "Amor", "emoji": "💔"},
+    "trabalho": {"label": "Trabalho", "emoji": "💼"},
+    "dopamina": {"label": "Dopamina", "emoji": "📱"},
+    "vida_adulta": {"label": "Vida Adulta", "emoji": "🧠"},
+    "social": {"label": "Social", "emoji": "🧍"},
+    "saude_mental": {"label": "Saúde Mental", "emoji": "🧘"},
+}
+
+SYSTEM_PROMPT = """Você é a Dra. Julga — psicóloga fictícia sarcástica que diagnostica situações absurdas da vida brasileira.
+
+Tom: sarcástico, engraçado, identificável, nunca cruel.
+Linguagem: português brasileiro informal, frases curtas e impactantes.
+
+REGRA: Responda SOMENTE com JSON válido, sem texto fora dele."""
+
+
+# ─── Geração do roteiro ───────────────────────────────────────────────────────
+
+def gerar_roteiro(categoria: str) -> dict:
+    """Gera roteiro de Reels em cenas curtas."""
+
+    info = CATEGORIAS_INFO.get(categoria, {"label": categoria, "emoji": "⚖️"})
+
+    prompt = f"""Crie um roteiro de Reels de 20-25 segundos para a Dra. Julga sobre "{info['label']}".
+
+O roteiro deve ter EXATAMENTE 6 cenas curtas, cada uma com 3-4 segundos de fala.
+Cada cena deve ser UMA frase curta e impactante.
+
+Estrutura obrigatória:
+- Cena 1: Hook — frase de abertura chocante ou curiosa
+- Cena 2: Apresentação do caso (situação identificável)
+- Cena 3: Detalhe engraçado do caso
+- Cena 4: Agravante (piora a situação com humor)
+- Cena 5: Veredicto da Dra. Julga — "Sem defesa possível."
+- Cena 6: CTA — "Descobre o seu em mejulga.com.br"
+
+Responda SOMENTE com este JSON:
+{{
+  "categoria": "{categoria}",
+  "titulo": "título curto do caso",
+  "cenas": [
+    {{"numero": 1, "duracao_segundos": 3, "texto": "frase da cena 1"}},
+    {{"numero": 2, "duracao_segundos": 4, "texto": "frase da cena 2"}},
+    {{"numero": 3, "duracao_segundos": 4, "texto": "frase da cena 3"}},
+    {{"numero": 4, "duracao_segundos": 4, "texto": "frase da cena 4"}},
+    {{"numero": 5, "duracao_segundos": 4, "texto": "frase da cena 5"}},
+    {{"numero": 6, "duracao_segundos": 3, "texto": "frase da cena 6"}}
+  ],
+  "texto_completo": "texto corrido de todas as cenas unidas para o áudio",
+  "legenda_instagram": "legenda completa para o post do Reels com hashtags",
+  "sugestao_musica": "sugestão de estilo musical de fundo (ex: lo-fi calmo, dramático orquestral)"
+}}"""
+
+    resposta = claude_client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1000,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    texto = resposta.content[0].text.strip()
+    texto = texto.replace("```json", "").replace("```", "").strip()
+    return json.loads(texto)
+
+
+# ─── Geração de áudio ─────────────────────────────────────────────────────────
+
+def gerar_audio(texto: str, arquivo_saida: Path) -> bool:
+    """Gera áudio com a voz da Dra. Julga via ElevenLabs."""
+
+    if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
+        print("⚠️  ELEVENLABS_API_KEY ou ELEVENLABS_VOICE_ID não configurados no .env")
+        return False
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "text": texto,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.4,
+            "similarity_boost": 0.8,
+            "style": 0.3,
+            "use_speaker_boost": True
+        }
+    }
+
+    r = requests.post(url, headers=headers, json=payload)
+
+    if r.status_code == 200:
+        with open(arquivo_saida, "wb") as f:
+            f.write(r.content)
+        return True
+    else:
+        print(f"❌ Erro ElevenLabs: {r.status_code} — {r.text}")
+        return False
+
+
+# ─── Salvar roteiro ───────────────────────────────────────────────────────────
+
+def salvar_roteiro(roteiro: dict, pasta: Path):
+    """Salva o roteiro em JSON e TXT formatado."""
+
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    categoria = roteiro.get("categoria", "geral")
+
+    # JSON completo
+    arquivo_json = pasta / f"{hoje}_{categoria}_reels.json"
+    with open(arquivo_json, "w", encoding="utf-8") as f:
+        json.dump(roteiro, f, ensure_ascii=False, indent=2)
+
+    # TXT formatado para usar no CapCut
+    arquivo_txt = pasta / f"{hoje}_{categoria}_roteiro_capcut.txt"
+    with open(arquivo_txt, "w", encoding="utf-8") as f:
+        f.write("=" * 50 + "\n")
+        f.write(f"ROTEIRO REELS — DRA. JULGA\n")
+        f.write(f"Categoria: {categoria.upper()}\n")
+        f.write(f"Título: {roteiro.get('titulo', '')}\n")
+        f.write(f"Data: {hoje}\n")
+        f.write("=" * 50 + "\n\n")
+
+        f.write("CENAS:\n\n")
+        for cena in roteiro.get("cenas", []):
+            f.write(f"CENA {cena['numero']} ({cena['duracao_segundos']}s)\n")
+            f.write(f"  → {cena['texto']}\n\n")
+
+        f.write("-" * 50 + "\n")
+        f.write("LEGENDA INSTAGRAM:\n\n")
+        f.write(roteiro.get("legenda_instagram", "") + "\n\n")
+
+        f.write("-" * 50 + "\n")
+        f.write(f"SUGESTÃO DE MÚSICA: {roteiro.get('sugestao_musica', '')}\n")
+
+    return arquivo_json, arquivo_txt
+
+
+# ─── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(description="Gera roteiro e áudio de Reels da Dra. Julga")
+    parser.add_argument("--categoria", default="dinheiro",
+                        choices=list(CATEGORIAS_INFO.keys()),
+                        help="Categoria do Reels")
+    parser.add_argument("--sem_audio", action="store_true",
+                        help="Gera só o roteiro sem o áudio")
+    args = parser.parse_args()
+
+    print(f"🎬 Gerando roteiro de Reels — categoria: {args.categoria}")
+
+    # Pasta de saída
+    pasta = Path(__file__).parent / "generated" / "reels"
+    pasta.mkdir(parents=True, exist_ok=True)
+
+    # Gera roteiro
+    print("📝 Gerando roteiro com IA...")
+    roteiro = gerar_roteiro(args.categoria)
+
+    # Exibe roteiro
+    print("\n" + "=" * 50)
+    print(f"🎬 ROTEIRO: {roteiro.get('titulo', '')}")
+    print("=" * 50)
+    for cena in roteiro.get("cenas", []):
+        print(f"\nCENA {cena['numero']} ({cena['duracao_segundos']}s):")
+        print(f"  → {cena['texto']}")
+
+    print(f"\n🎵 Música sugerida: {roteiro.get('sugestao_musica', '')}")
+
+    # Salva arquivos
+    arquivo_json, arquivo_txt = salvar_roteiro(roteiro, pasta)
+    print(f"\n✅ Roteiro salvo em: {arquivo_txt}")
+
+    # Gera áudio
+    if not args.sem_audio:
+        hoje = datetime.now().strftime("%Y-%m-%d")
+        arquivo_audio = pasta / f"{hoje}_{args.categoria}_audio.mp3"
+        print(f"\n🎙️ Gerando áudio com ElevenLabs...")
+        sucesso = gerar_audio(roteiro.get("texto_completo", ""), arquivo_audio)
+        if sucesso:
+            print(f"✅ Áudio salvo em: {arquivo_audio}")
+        else:
+            print("⚠️  Áudio não gerado — verifique as credenciais do ElevenLabs")
+
+    print(f"\n🎬 Roteiro pronto! Importe o áudio e o roteiro no CapCut.")
+    print(f"📱 Legenda Instagram gerada e salva no arquivo TXT.")
+
+
+if __name__ == "__main__":
+    main()
