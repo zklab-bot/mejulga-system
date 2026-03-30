@@ -9,17 +9,21 @@ on:
     - cron: '0 21 * * *'
     # 21h BRT = 00h UTC (dia seguinte)
     - cron: '0 0 * * *'
-  
-  # Permite rodar manualmente pelo GitHub
   workflow_dispatch:
+
+# Permissão para o workflow fazer push no repositório
+permissions:
+  contents: write
 
 jobs:
   gerar-posts:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -27,8 +31,7 @@ jobs:
           python-version: '3.12'
 
       - name: Instalar dependências
-        run: |
-          pip install anthropic python-dotenv
+        run: pip install anthropic python-dotenv
 
       - name: Gerar posts do dia
         env:
