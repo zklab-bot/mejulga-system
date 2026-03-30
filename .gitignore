@@ -1,0 +1,19 @@
+# Variáveis de ambiente (NUNCA subir isso no GitHub!)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# Posts gerados (logs locais)
+content-engine/generated/*.json
+
+# VS Code
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
