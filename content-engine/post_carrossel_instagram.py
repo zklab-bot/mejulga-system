@@ -6,18 +6,18 @@ Uso: python post_carrossel_instagram.py --categoria dinheiro
 """
 
 import os
-import base64
+import io
 import argparse
 import requests
 from datetime import datetime
 from pathlib import Path
+from PIL import Image
 from dotenv import load_dotenv
 
 load_dotenv()
 
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 IG_ACCOUNT_ID     = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
-IMGBB_API_KEY     = os.getenv("IMGBB_API_KEY", "")
 
 CATEGORIAS_CAPTION = {
     "dinheiro": (
@@ -66,17 +66,23 @@ CATEGORIAS_CAPTION = {
 }
 
 
-def upload_imgbb(caminho_img: Path) -> str:
-    """Faz upload para ImgBB e retorna URL pública."""
-    with open(caminho_img, "rb") as f:
-        img_b64 = base64.b64encode(f.read()).decode("utf-8")
+def upload_catbox(caminho_img: Path) -> str:
+    """Converte para JPEG, faz upload para catbox.moe e retorna URL pública."""
+    img = Image.open(caminho_img).convert("RGB")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=95)
+    buf.seek(0)
     resp = requests.post(
-        "https://api.imgbb.com/1/upload",
-        data={"key": IMGBB_API_KEY, "image": img_b64,
-              "name": caminho_img.stem, "expiration": 3600}
+        "https://catbox.moe/user/api.php",
+        data={"reqtype": "fileupload"},
+        files={"fileToUpload": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
+        timeout=30,
     )
     resp.raise_for_status()
-    return resp.json()["data"]["url"]
+    url = resp.text.strip()
+    if not url.startswith("https://"):
+        raise RuntimeError(f"Catbox retornou resposta inesperada: {url}")
+    return url
 
 
 def criar_container_imagem(image_url: str) -> str:
@@ -138,8 +144,7 @@ def main():
     args = parser.parse_args()
 
     for var, val in [("META_ACCESS_TOKEN", META_ACCESS_TOKEN),
-                     ("IG_ACCOUNT_ID", IG_ACCOUNT_ID),
-                     ("IMGBB_API_KEY", IMGBB_API_KEY)]:
+                     ("IG_ACCOUNT_ID", IG_ACCOUNT_ID)]:
         if not val:
             raise EnvironmentError(f"{var} não configurado no .env")
 
@@ -152,12 +157,12 @@ def main():
     slides = localizar_slides(categoria, hoje)
     print(f"  📂 {len(slides)} slides encontrados")
 
-    # Upload de cada slide para ImgBB
-    print("\n📦 PASSO 1: Upload dos slides para ImgBB")
+    # Upload de cada slide para catbox.moe
+    print("\n📦 PASSO 1: Upload dos slides para catbox.moe")
     image_urls = []
     for i, slide in enumerate(slides):
         print(f"  ⬆️  Slide {i+1}/{len(slides)}: {slide.name}")
-        url = upload_imgbb(slide)
+        url = upload_catbox(slide)
         image_urls.append(url)
         print(f"       ✅ {url}")
 
