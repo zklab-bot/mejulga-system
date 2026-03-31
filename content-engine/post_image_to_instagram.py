@@ -191,16 +191,16 @@ def main():
     print(f"\n📸 Publicando — {categoria} — {hoje}")
     print(f"📁 Arquivo: {caminho_img.name}\n")
 
-    # Upload da imagem — tenta GitHub Contents API primeiro
-    if GITHUB_TOKEN and GITHUB_REPO:
-        print("📦 PASSO 1: Upload via GitHub Contents API")
-        image_url = upload_github_contents(caminho_img)
-    elif IMGBB_API_KEY:
+    # Upload da imagem — ImgBB primeiro (Meta aceita), GitHub como fallback
+    if IMGBB_API_KEY:
         print("📦 PASSO 1: Upload via ImgBB")
         image_url = upload_imgbb(caminho_img)
+    elif GITHUB_TOKEN and GITHUB_REPO:
+        print("📦 PASSO 1: Upload via GitHub Contents API")
+        image_url = upload_github_contents(caminho_img)
     else:
         raise EnvironmentError(
-            "Configure GITHUB_TOKEN+GITHUB_REPO ou IMGBB_API_KEY para hospedar a imagem"
+            "Configure IMGBB_API_KEY ou GITHUB_TOKEN+GITHUB_REPO para hospedar a imagem"
         )
 
     print("\n📸 PASSO 2: Publicando no Instagram")

@@ -77,6 +77,7 @@ jobs:
           IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           GITHUB_REPO: zklab-bot/mejulga-assets
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
 
       - name: Log de sucesso
         run: |
