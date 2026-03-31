@@ -63,8 +63,9 @@ jobs:
       - name: Gerar imagem PNG
         run: |
           cd content-engine
-          python gerar_imagem_post.py \
-            --categoria ${{ steps.categoria.outputs.categoria }}
+          python generate_video_v2.py \
+            --categoria ${{ steps.categoria.outputs.categoria }} \
+            --estilo minimalista
 
       - name: Publicar no Instagram
         run: |
