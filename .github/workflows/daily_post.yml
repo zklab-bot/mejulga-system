@@ -33,7 +33,6 @@ jobs:
         run: |
           HORA=$(date -u +"%H")
           DIA=$(date -u +"%u")
-
           if [ -n "${{ github.event.inputs.categoria }}" ]; then
             CATEGORIA="${{ github.event.inputs.categoria }}"
           elif [ "$HORA" = "11" ]; then
@@ -46,7 +45,6 @@ jobs:
             CATS=("trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro" "amor")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
           fi
-
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
           echo "📅 Categoria: $CATEGORIA"
 
@@ -59,28 +57,24 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Gerar imagem PNG
+      - name: Gerar slides do carrossel
         run: |
           cd content-engine
-          python gerar_imagem_actions.py \
+          python gerar_carrossel.py \
             --categoria ${{ steps.categoria.outputs.categoria }}
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Publicar no Instagram
+      - name: Publicar carrossel no Instagram
         run: |
           cd content-engine
-          python post_image_to_instagram.py \
+          python post_carrossel_instagram.py \
             --categoria ${{ steps.categoria.outputs.categoria }}
         env:
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
           IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          GITHUB_REPO: zklab-bot/mejulga-assets
           IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
 
       - name: Log de sucesso
         run: |
-          echo "🎉 Post publicado com sucesso!"
+          echo "🎉 Carrossel publicado!"
           echo "📅 Data: $(date -u)"
           echo "🏷️  Categoria: ${{ steps.categoria.outputs.categoria }}"
