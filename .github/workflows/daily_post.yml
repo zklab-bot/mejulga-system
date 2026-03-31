@@ -27,7 +27,7 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          pip install pillow anthropic python-dotenv requests
+          pip install pillow anthropic python-dotenv requests numpy moviepy
 
       - name: Definir categoria do post
         id: categoria
@@ -60,24 +60,11 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Gerar imagem
+      - name: Gerar imagem PNG
         run: |
           cd content-engine
-          python generate_video_v2.py \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --estilo minimalista
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
-      - name: Extrair frame PNG do vídeo
-        run: |
-          HOJE=$(date -u +"%Y-%m-%d")
-          CAT=${{ steps.categoria.outputs.categoria }}
-          MP4="content-engine/generated/reels/${HOJE}_${CAT}_minimalista_reels.mp4"
-          PNG="content-engine/generated/reels/${HOJE}_${CAT}_minimalista_reels.png"
-          ffmpeg -i "$MP4" -vframes 1 "$PNG" -y
-          echo "✅ PNG gerado: $PNG"
-          ls -lh "content-engine/generated/reels/"
+          python gerar_imagem_post.py \
+            --categoria ${{ steps.categoria.outputs.categoria }}
 
       - name: Publicar no Instagram
         run: |
@@ -92,6 +79,6 @@ jobs:
 
       - name: Log de sucesso
         run: |
-          echo "🎉 Post publicado com sucesso!"
+          echo "🎉 Post publicado!"
           echo "📅 Data: $(date -u)"
           echo "🏷️  Categoria: ${{ steps.categoria.outputs.categoria }}"
