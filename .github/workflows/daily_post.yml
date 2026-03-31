@@ -2,7 +2,6 @@ name: Daily Posts — Dra. Julga
 
 on:
   schedule:
-    # 3 posts por dia (horário de Brasília = UTC-3)
     - cron: '0 11 * * *'   # 08h Brasília
     - cron: '0 15 * * *'   # 12h Brasília
     - cron: '0 21 * * *'   # 18h Brasília
@@ -11,7 +10,7 @@ on:
       categoria:
         description: 'Categoria do post'
         required: false
-        default: ''
+        default: 'dinheiro'
 
 jobs:
   publicar:
@@ -33,34 +32,31 @@ jobs:
       - name: Definir categoria do post
         id: categoria
         run: |
-          # Rotação automática de categorias por hora UTC
           HORA=$(date -u +"%H")
-          DIA=$(date -u +"%u")  # 1=seg ... 7=dom
+          DIA=$(date -u +"%u")
 
           if [ -n "${{ github.event.inputs.categoria }}" ]; then
-            # Dispatch manual com categoria específica
             CATEGORIA="${{ github.event.inputs.categoria }}"
           elif [ "$HORA" = "11" ]; then
-            # 08h Brasília — categorias do dia rotacionam
             CATS=("dinheiro" "amor" "trabalho" "dopamina" "vida_adulta" "social" "saude_mental")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
           elif [ "$HORA" = "15" ]; then
-            # 12h Brasília — segunda categoria do dia
             CATS=("amor" "trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
           else
-            # 18h Brasília — terceira categoria do dia
             CATS=("trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro" "amor")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
           fi
 
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
-          echo "📅 Categoria selecionada: $CATEGORIA"
+          echo "📅 Categoria: $CATEGORIA"
 
       - name: Gerar roteiro
         run: |
           cd content-engine
-          python generate_script.py --categoria ${{ steps.categoria.outputs.categoria }}
+          python generate_reels.py \
+            --categoria ${{ steps.categoria.outputs.categoria }} \
+            --sem_audio
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -73,16 +69,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Converter MP4 para PNG (frame único)
+      - name: Extrair frame PNG do vídeo
         run: |
-          cd content-engine
           HOJE=$(date -u +"%Y-%m-%d")
           CAT=${{ steps.categoria.outputs.categoria }}
-          MP4="generated/reels/${HOJE}_${CAT}_minimalista_reels.mp4"
-          PNG="generated/reels/${HOJE}_${CAT}_minimalista_reels.png"
-          # Extrai primeiro frame do vídeo como PNG
+          MP4="content-engine/generated/reels/${HOJE}_${CAT}_minimalista_reels.mp4"
+          PNG="content-engine/generated/reels/${HOJE}_${CAT}_minimalista_reels.png"
           ffmpeg -i "$MP4" -vframes 1 "$PNG" -y
-          echo "✅ PNG extraído: $PNG"
+          echo "✅ PNG gerado: $PNG"
+          ls -lh "content-engine/generated/reels/"
 
       - name: Publicar no Instagram
         run: |
