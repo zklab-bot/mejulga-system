@@ -1,14 +1,14 @@
 """
 post_image_to_instagram.py
-Publica imagem PNG diretamente no Instagram via Meta Graph API.
-Não precisa de hospedagem externa — usa upload direto via API.
+Publica imagem PNG no Instagram via Meta Graph API.
+Usa servidor HTTP temporário no GitHub Actions para servir a imagem publicamente.
+Ou faz upload para ImgBB (gratuito, sem conta necessária via API key).
 
-Uso:
-  python post_image_to_instagram.py --categoria dinheiro
-  python post_image_to_instagram.py --categoria amor --data 2026-03-31
+Uso: python post_image_to_instagram.py --categoria dinheiro
 """
 
 import os
+import base64
 import argparse
 import requests
 from datetime import datetime
@@ -17,11 +17,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
-IG_ACCOUNT_ID     = os.getenv("IG_ACCOUNT_ID")
-GITHUB_TOKEN      = os.getenv("GITHUB_TOKEN")
-GITHUB_REPO       = os.getenv("GITHUB_REPO", "zklab-bot/mejulga-assets")
-GITHUB_RELEASE_TAG = os.getenv("GITHUB_RELEASE_TAG", "imagens-diarias")
+META_ACCESS_TOKEN    = os.getenv("META_ACCESS_TOKEN")
+IG_ACCOUNT_ID        = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
+IMGBB_API_KEY        = os.getenv("IMGBB_API_KEY", "")  # opcional
+GITHUB_TOKEN         = os.getenv("GITHUB_TOKEN", "")
+GITHUB_REPO          = os.getenv("GITHUB_REPO", "zklab-bot/mejulga-assets")
 
 CATEGORIAS_CAPTION = {
     "dinheiro": (
@@ -70,92 +70,80 @@ CATEGORIAS_CAPTION = {
 }
 
 
-# ─── 1. Upload imagem para GitHub Releases (URL pública) ──────────────────────
+def upload_imgbb(caminho_img: Path) -> str:
+    """Faz upload da imagem para ImgBB e retorna URL pública."""
+    print("  ⬆️  Enviando imagem para ImgBB...")
+    with open(caminho_img, "rb") as f:
+        img_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-def garantir_release(tag: str) -> str:
-    """Garante que a release existe e retorna o upload_url."""
-    headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json",
-    }
-    resp = requests.get(
-        f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{tag}",
-        headers=headers
-    )
-    if resp.status_code == 200:
-        return resp.json()["upload_url"].replace("{?name,label}", "")
-
-    print(f"  📦 Criando release '{tag}'...")
     resp = requests.post(
-        f"https://api.github.com/repos/{GITHUB_REPO}/releases",
-        headers=headers,
-        json={
-            "tag_name": tag,
-            "name": "Imagens Diárias — Dra. Julga",
-            "body": "Imagens geradas pelo pipeline mejulga-system",
-            "draft": False,
-            "prerelease": False,
+        "https://api.imgbb.com/1/upload",
+        data={
+            "key": IMGBB_API_KEY,
+            "image": img_base64,
+            "name": caminho_img.stem,
+            "expiration": 600,  # expira em 10 minutos (só precisa para o upload Meta)
         }
     )
     resp.raise_for_status()
-    return resp.json()["upload_url"].replace("{?name,label}", "")
-
-
-def upload_imagem_github(caminho_img: Path) -> str:
-    """Faz upload da imagem para GitHub Releases e retorna URL pública."""
-    headers_gh = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json",
-    }
-
-    upload_url = garantir_release(GITHUB_RELEASE_TAG)
-    nome = caminho_img.name
-
-    # Verifica se já existe
-    resp = requests.get(
-        f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{GITHUB_RELEASE_TAG}",
-        headers=headers_gh
-    )
-    for asset in resp.json().get("assets", []):
-        if asset["name"] == nome:
-            print(f"  ♻️  Imagem já existe: {asset['browser_download_url']}")
-            return asset["browser_download_url"]
-
-    print(f"  ⬆️  Enviando {nome} para GitHub Releases...")
-    with open(caminho_img, "rb") as f:
-        resp = requests.post(
-            f"{upload_url}?name={nome}",
-            headers={**headers_gh, "Content-Type": "image/png"},
-            data=f,
-        )
-    resp.raise_for_status()
-    url = resp.json()["browser_download_url"]
+    url = resp.json()["data"]["url"]
     print(f"  ✅ URL pública: {url}")
     return url
 
 
-# ─── 2. Publicar imagem no Instagram ──────────────────────────────────────────
+def upload_github_contents(caminho_img: Path) -> str:
+    """Faz upload da imagem para GitHub via Contents API (não precisa de releases)."""
+    print("  ⬆️  Enviando imagem para GitHub Contents API...")
+
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    nome = caminho_img.name
+    path_repo = f"images/{nome}"
+    url_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path_repo}"
+
+    # Verifica se já existe
+    resp_check = requests.get(url_api, headers=headers)
+    sha = resp_check.json().get("sha") if resp_check.status_code == 200 else None
+
+    with open(caminho_img, "rb") as f:
+        conteudo_b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    payload = {
+        "message": f"feat: imagem {nome}",
+        "content": conteudo_b64,
+        "branch": "main",
+    }
+    if sha:
+        payload["sha"] = sha  # necessário para actualizar ficheiro existente
+
+    resp = requests.put(url_api, headers=headers, json=payload)
+    resp.raise_for_status()
+
+    # URL raw pública do GitHub
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path_repo}"
+    print(f"  ✅ URL pública: {url}")
+    return url
+
 
 def publicar_imagem(image_url: str, caption: str) -> str:
-    """Publica imagem no Instagram via Meta Graph API. Retorna media_id."""
+    """Publica imagem no Instagram via Meta Graph API."""
     base = f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}"
     params = {"access_token": META_ACCESS_TOKEN}
 
-    # Etapa 1: criar container
     print("  📤 Criando container de imagem...")
     resp = requests.post(
         f"{base}/media",
         params=params,
-        data={
-            "image_url": image_url,
-            "caption": caption,
-        }
+        data={"image_url": image_url, "caption": caption}
     )
     resp.raise_for_status()
     container_id = resp.json()["id"]
     print(f"  📦 Container: {container_id}")
 
-    # Etapa 2: publicar
     print("  🚀 Publicando no Instagram...")
     resp = requests.post(
         f"{base}/media_publish",
@@ -168,54 +156,59 @@ def publicar_imagem(image_url: str, caption: str) -> str:
     return media_id
 
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
+def localizar_imagem(categoria: str, hoje: str) -> Path:
+    pasta = Path(__file__).parent / "generated" / "reels"
+    for sufixo in [
+        f"_{categoria}_minimalista_reels.png",
+        f"_{categoria}_reels.png",
+        f"_{categoria}_minimalista_reels.mp4",
+    ]:
+        caminho = pasta / f"{hoje}{sufixo}"
+        if caminho.exists():
+            return caminho
+    raise FileNotFoundError(
+        f"Imagem não encontrada em {pasta} para {hoje}_{categoria}"
+    )
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--categoria", required=True,
                         choices=list(CATEGORIAS_CAPTION.keys()))
     parser.add_argument("--data", default=None)
-    parser.add_argument("--imagem", default=None,
-                        help="Caminho direto para a imagem PNG")
+    parser.add_argument("--imagem", default=None)
     args = parser.parse_args()
 
-    # Validações
-    for var in ["META_ACCESS_TOKEN", "IG_ACCOUNT_ID", "GITHUB_TOKEN"]:
-        if not os.getenv(var):
-            raise EnvironmentError(f"{var} não configurado no .env")
+    for var, val in [("META_ACCESS_TOKEN", META_ACCESS_TOKEN),
+                     ("IG_ACCOUNT_ID", IG_ACCOUNT_ID)]:
+        if not val:
+            raise EnvironmentError(f"{var} não configurado")
 
     hoje = args.data or datetime.now().strftime("%Y-%m-%d")
     categoria = args.categoria
 
-    # Localizar imagem
-    if args.imagem:
-        caminho_img = Path(args.imagem)
-    else:
-        pasta = Path(__file__).parent / "generated" / "reels"
-        # Tenta minimalista primeiro, depois padrão
-        for sufixo in ["_minimalista_reels.png", "_reels.png", "_minimalista_reels.mp4"]:
-            caminho_img = pasta / f"{hoje}_{categoria}{sufixo}"
-            if caminho_img.exists():
-                break
-
-    if not caminho_img.exists():
-        raise FileNotFoundError(f"Imagem não encontrada: {caminho_img}")
-
-    print(f"\n📸 Publicando imagem — {categoria} — {hoje}")
+    caminho_img = Path(args.imagem) if args.imagem else localizar_imagem(categoria, hoje)
+    print(f"\n📸 Publicando — {categoria} — {hoje}")
     print(f"📁 Arquivo: {caminho_img.name}\n")
 
-    # Passo 1: Upload GitHub
-    print("📦 PASSO 1: Upload para GitHub Releases")
-    image_url = upload_imagem_github(caminho_img)
+    # Upload da imagem — tenta GitHub Contents API primeiro
+    if GITHUB_TOKEN and GITHUB_REPO:
+        print("📦 PASSO 1: Upload via GitHub Contents API")
+        image_url = upload_github_contents(caminho_img)
+    elif IMGBB_API_KEY:
+        print("📦 PASSO 1: Upload via ImgBB")
+        image_url = upload_imgbb(caminho_img)
+    else:
+        raise EnvironmentError(
+            "Configure GITHUB_TOKEN+GITHUB_REPO ou IMGBB_API_KEY para hospedar a imagem"
+        )
 
-    # Passo 2: Publicar Instagram
-    print("\n📸 PASSO 2: Publicando no @dra.julga")
+    print("\n📸 PASSO 2: Publicando no Instagram")
     caption = CATEGORIAS_CAPTION[categoria]
     media_id = publicar_imagem(image_url, caption)
 
-    print(f"\n✅ Post publicado com sucesso!")
-    print(f"🎉 @dra.julga — media_id: {media_id}")
-    print(f"🌐 https://www.instagram.com/dra.julga/")
+    print(f"\n✅ Post publicado! media_id={media_id}")
+    print("🌐 https://www.instagram.com/dra.julga/")
 
 
 if __name__ == "__main__":
