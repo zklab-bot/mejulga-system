@@ -83,8 +83,11 @@ def criar_container_imagem(image_url: str) -> str:
     """Cria container de imagem para carrossel. Retorna container_id."""
     resp = requests.post(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media",
-        params={"access_token": META_ACCESS_TOKEN},
-        data={"image_url": image_url, "is_carousel_item": "true"}
+        params={
+            "access_token": META_ACCESS_TOKEN,
+            "image_url": image_url,
+            "is_carousel_item": "true",
+        }
     )
     resp.raise_for_status()
     return resp.json()["id"]
@@ -94,8 +97,8 @@ def criar_carrossel(container_ids: list, caption: str) -> str:
     """Cria container do carrossel com todos os slides. Retorna carrossel_id."""
     resp = requests.post(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media",
-        params={"access_token": META_ACCESS_TOKEN},
-        data={
+        params={
+            "access_token": META_ACCESS_TOKEN,
             "media_type": "CAROUSEL",
             "children": ",".join(container_ids),
             "caption": caption,
@@ -109,8 +112,10 @@ def publicar_carrossel(carrossel_id: str) -> str:
     """Publica o carrossel. Retorna media_id."""
     resp = requests.post(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media_publish",
-        params={"access_token": META_ACCESS_TOKEN},
-        data={"creation_id": carrossel_id}
+        params={
+            "access_token": META_ACCESS_TOKEN,
+            "creation_id": carrossel_id,
+        }
     )
     resp.raise_for_status()
     return resp.json()["id"]
