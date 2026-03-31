@@ -26,8 +26,7 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependências
-        run: |
-          pip install pillow anthropic python-dotenv requests numpy moviepy
+        run: pip install pillow anthropic python-dotenv requests numpy
 
       - name: Definir categoria do post
         id: categoria
@@ -63,9 +62,10 @@ jobs:
       - name: Gerar imagem PNG
         run: |
           cd content-engine
-          python generate_video_v2.py \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --estilo minimalista
+          python gerar_imagem_actions.py \
+            --categoria ${{ steps.categoria.outputs.categoria }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Publicar no Instagram
         run: |
@@ -80,6 +80,6 @@ jobs:
 
       - name: Log de sucesso
         run: |
-          echo "🎉 Post publicado!"
+          echo "🎉 Post publicado com sucesso!"
           echo "📅 Data: $(date -u)"
           echo "🏷️  Categoria: ${{ steps.categoria.outputs.categoria }}"
