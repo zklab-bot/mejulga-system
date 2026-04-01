@@ -7,6 +7,7 @@ Uso: python post_carrossel_instagram.py --categoria dinheiro
 
 import os
 import io
+import time
 import argparse
 import requests
 from datetime import datetime
@@ -103,6 +104,25 @@ def upload_catbox(caminho_img: Path) -> str:
     return url
 
 
+def aguardar_container_pronto(container_id: str, max_tentativas: int = 20, intervalo: int = 5) -> None:
+    """Aguarda até o container estar no status FINISHED antes de publicar."""
+    for tentativa in range(1, max_tentativas + 1):
+        resp = requests.get(
+            f"https://graph.facebook.com/v19.0/{container_id}",
+            params={"fields": "status_code", "access_token": META_ACCESS_TOKEN},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        status = resp.json().get("status_code", "UNKNOWN")
+        print(f"       [{tentativa}/{max_tentativas}] status: {status}")
+        if status == "FINISHED":
+            return
+        if status == "ERROR":
+            raise RuntimeError(f"Container {container_id} retornou ERROR no processamento")
+        time.sleep(intervalo)
+    raise TimeoutError(f"Container {container_id} não ficou FINISHED após {max_tentativas} tentativas")
+
+
 def criar_container_imagem(image_url: str) -> str:
     """Cria container de imagem para carrossel. Retorna container_id."""
     resp = requests.post(
@@ -192,14 +212,18 @@ def main():
     for i, url in enumerate(image_urls):
         print(f"  📸 Container {i+1}/{len(image_urls)}...")
         cid = criar_container_imagem(url)
+        print(f"       ID: {cid} — aguardando FINISHED...")
+        aguardar_container_pronto(cid)
         container_ids.append(cid)
-        print(f"       ✅ {cid}")
+        print(f"       ✅ pronto")
 
     # Criar carrossel
     print("\n📦 PASSO 3: Criando carrossel")
     caption = CATEGORIAS_CAPTION[categoria]
     carrossel_id = criar_carrossel(container_ids, caption)
-    print(f"  ✅ Carrossel ID: {carrossel_id}")
+    print(f"  Carrossel ID: {carrossel_id} — aguardando FINISHED...")
+    aguardar_container_pronto(carrossel_id)
+    print(f"  ✅ Carrossel pronto")
 
     # Publicar
     print("\n🚀 PASSO 4: Publicando no @dra.julga")
