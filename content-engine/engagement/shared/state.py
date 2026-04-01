@@ -1,3 +1,4 @@
+import copy
 import json
 from pathlib import Path
 
@@ -15,8 +16,7 @@ DEFAULT_STATE: dict = {
 def load() -> dict:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not STATE_FILE.exists():
-        return {k: (v.copy() if isinstance(v, (list, dict)) else v)
-                for k, v in DEFAULT_STATE.items()}
+        return copy.deepcopy(DEFAULT_STATE)
     with open(STATE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 

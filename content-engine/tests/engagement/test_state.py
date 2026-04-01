@@ -1,5 +1,3 @@
-import json
-import pytest
 from pathlib import Path
 
 
@@ -33,5 +31,5 @@ def test_load_cria_pasta_se_nao_existir(tmp_path, monkeypatch):
     import engagement.shared.state as state
     pasta = tmp_path / "sub" / "pasta"
     monkeypatch.setattr(state, "STATE_FILE", pasta / "state.json")
-    result = state.load()
-    assert result["comments_replied"] == []
+    state.load()
+    assert pasta.exists()
