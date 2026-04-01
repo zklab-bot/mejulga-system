@@ -7,6 +7,7 @@ Uso: python post_carrossel_instagram.py --categoria dinheiro
 
 import os
 import io
+import sys
 import time
 import argparse
 import requests
@@ -183,6 +184,11 @@ def main():
                         help="Imprime apenas o media_id e encerra")
     args = parser.parse_args()
 
+    # Em modo --output-id, redireciona todos os logs para stderr
+    # para que apenas o media_id seja capturado pelo bash
+    if args.output_id:
+        sys.stdout = sys.stderr
+
     for var, val in [("META_ACCESS_TOKEN", META_ACCESS_TOKEN),
                      ("IG_ACCOUNT_ID", IG_ACCOUNT_ID)]:
         if not val:
@@ -230,6 +236,7 @@ def main():
     media_id = publicar_carrossel(carrossel_id)
 
     if args.output_id:
+        sys.stdout = sys.__stdout__  # restaura stdout real
         print(media_id)
         return
 
