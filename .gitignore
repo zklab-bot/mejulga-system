@@ -17,3 +17,6 @@ content-engine/generated/*.json
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Git worktrees
+.worktrees/
