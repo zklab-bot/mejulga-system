@@ -2,8 +2,8 @@
 gerar_carrossel.py — v3 "Tribunal Editorial"
 Gera 6 slides PNG para carrossel do Instagram.
 
-Design: clean editorial — fundo branco, tipografia forte, sem blocos coloridos de borda.
-Labels jurídicos mantidos como pills sobre fundo branco.
+Design padrão: clean editorial — fundo branco, tipografia forte.
+Template Canva: se existirem arquivos em templates/carrossel/, são usados como fundo.
 
 Uso: python gerar_carrossel.py --categoria amor
 """
@@ -18,8 +18,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-LARGURA = 1080
-ALTURA  = 1080
+LARGURA      = 1080
+ALTURA       = 1080
+TEMPLATES_DIR = Path(__file__).parent / "templates" / "carrossel"
 
 # ─── Paleta ───────────────────────────────────────────────────────────────────
 ROXO_PROFUNDO  = (30, 10, 70)       # texto principal, âncoras escuras
@@ -152,10 +153,36 @@ def _desenhar_carimbo(img: Image.Image):
     img.paste(stamp_rot, (paste_x, paste_y), stamp_rot)
 
 
+# ─── Templates Canva ──────────────────────────────────────────────────────────
+
+def _carregar_template(nome_arquivo: str) -> Image.Image | None:
+    """Carrega template PNG do Canva se disponível na pasta templates/carrossel/."""
+    path = TEMPLATES_DIR / nome_arquivo
+    if path.exists():
+        return Image.open(path).convert("RGB").resize((LARGURA, ALTURA), Image.LANCZOS)
+    return None
+
+
+def _templates_ativos() -> bool:
+    """Retorna True se os 3 templates existirem."""
+    return all(
+        (TEMPLATES_DIR / f).exists()
+        for f in ["intro_bg.png", "cena_bg.png", "veredicto_bg.png"]
+    )
+
+
 # ─── Base ─────────────────────────────────────────────────────────────────────
 
-def base_slide() -> tuple[Image.Image, ImageDraw.ImageDraw]:
-    """Fundo branco puro — sem blocos de cor nas bordas."""
+def base_slide(template_nome: str | None = None) -> tuple[Image.Image, ImageDraw.ImageDraw]:
+    """
+    Fundo do slide. Prioridade:
+      1. Template Canva (se existir em templates/carrossel/<template_nome>)
+      2. Branco puro (design padrão)
+    """
+    if template_nome:
+        tmpl = _carregar_template(template_nome)
+        if tmpl:
+            return tmpl, ImageDraw.Draw(tmpl)
     img  = Image.new("RGB", (LARGURA, ALTURA), BRANCO_PURO)
     draw = ImageDraw.Draw(img)
     return img, draw
@@ -164,7 +191,7 @@ def base_slide() -> tuple[Image.Image, ImageDraw.ImageDraw]:
 # ─── Slides ───────────────────────────────────────────────────────────────────
 
 def slide_intro(categoria: str, numero: int, total: int) -> Image.Image:
-    img, draw = base_slide()
+    img, draw = base_slide("intro_bg.png")
     cx = LARGURA // 2
 
     # Contador sutil
@@ -211,7 +238,7 @@ def slide_intro(categoria: str, numero: int, total: int) -> Image.Image:
 
 
 def slide_cena(texto: str, numero_cena: int, numero_slide: int, total: int) -> Image.Image:
-    img, draw = base_slide()
+    img, draw = base_slide("cena_bg.png")
     cx = LARGURA // 2
 
     # Contador sutil
@@ -281,7 +308,7 @@ def slide_cena(texto: str, numero_cena: int, numero_slide: int, total: int) -> I
 
 
 def slide_veredicto(conclusao: str, numero: int, total: int) -> Image.Image:
-    img, draw = base_slide()
+    img, draw = base_slide("veredicto_bg.png")
     cx = LARGURA // 2
 
     # Contador sutil
@@ -381,7 +408,8 @@ def main():
     hoje      = args.data or datetime.now().strftime("%Y-%m-%d")
     categoria = args.categoria
 
-    print(f"Gerando carrossel v3 'Tribunal Editorial' — {categoria} — {hoje}")
+    modo = "template Canva" if _templates_ativos() else "design padrão"
+    print(f"Gerando carrossel v3 — {categoria} — {hoje} [{modo}]")
 
     roteiro   = carregar_roteiro(categoria, hoje)
     cenas     = roteiro.get("cenas", [])[:4]
