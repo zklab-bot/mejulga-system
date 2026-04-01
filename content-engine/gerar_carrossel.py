@@ -13,6 +13,7 @@ import json
 import argparse
 from datetime import datetime
 from pathlib import Path
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
 
@@ -155,6 +156,114 @@ def _desenhar_carimbo(img: Image.Image):
 
 # ─── Templates Canva ──────────────────────────────────────────────────────────
 
+# Zonas de texto como fração da imagem (top, bottom, left, right)
+# Calibradas para templates 1080×1350 (4:5 Instagram portrait)
+# Define onde o conteúdo dinâmico é apagado e reescrito
+TEMPLATE_ZONAS = {
+    "intro":     (0.17, 0.68, 0.04, 0.96),   # texto intro — y=229-918 cobre y=485-870
+    "cena":      (0.32, 0.61, 0.04, 0.96),   # abaixo do label (y≈380-405) — cobre texto y=600-796
+    "veredicto": (0.39, 0.49, 0.04, 0.96),   # texto veredicto — y=527-662 cobre y=565-615
+}
+
+# Faixa limpa (entre header e labels) para amostrar textura do fundo
+FUNDO_SAMPLE = (0.09, 0.13, 0.30, 0.70)
+
+
+def _sample_bg(img: Image.Image) -> tuple[np.ndarray, np.ndarray]:
+    """Retorna média e desvio da cor do fundo em região limpa."""
+    W, H = img.size
+    y0, y1 = int(FUNDO_SAMPLE[0] * H), int(FUNDO_SAMPLE[1] * H)
+    x0, x1 = int(FUNDO_SAMPLE[2] * W), int(FUNDO_SAMPLE[3] * W)
+    region = np.array(img.crop((x0, y0, x1, y1)), dtype=np.float32)
+    mean = region.mean(axis=(0, 1))
+    std  = region.std(axis=(0, 1)).clip(0, 5)
+    return mean, std
+
+
+def _apagar_zona(img: Image.Image, zona: str) -> Image.Image:
+    """Apaga a zona de texto replicando a textura do fundo."""
+    W, H = img.size
+    top, bot, left, right = TEMPLATE_ZONAS[zona]
+    x0, y0 = int(left * W), int(top * H)
+    x1, y1 = int(right * W), int(bot * H)
+    bg_mean, bg_std = _sample_bg(img)
+    arr = np.array(img, dtype=np.float32)
+    noise = np.random.normal(0, bg_std, (y1 - y0, x1 - x0, 3))
+    arr[y0:y1, x0:x1] = np.clip(bg_mean + noise, 0, 255)
+    return Image.fromarray(arr.astype(np.uint8))
+
+
+def _quebrar_com_newlines(draw: ImageDraw.ImageDraw,
+                          texto: str, fonte, max_w: int) -> list[str]:
+    """Respeita \\n e aplica word-wrap em cada parágrafo."""
+    linhas = []
+    for paragrafo in texto.split("\n"):
+        if not paragrafo.strip():
+            continue
+        atual = []
+        for palavra in paragrafo.split():
+            atual.append(palavra)
+            w = draw.textbbox((0, 0), " ".join(atual), font=fonte)[2]
+            if w > max_w and len(atual) > 1:
+                linhas.append(" ".join(atual[:-1]))
+                atual = [palavra]
+        if atual:
+            linhas.append(" ".join(atual))
+    return linhas
+
+
+def _fonte_maxima(draw, linhas, zona, img_size, max_sz=80, min_sz=28):
+    """Encontra o maior tamanho de fonte que cabe na zona."""
+    W, H = img_size
+    _, _, left, right = TEMPLATE_ZONAS[zona]
+    max_w = int((right - left) * W)
+    for sz in range(max_sz, min_sz - 1, -2):
+        fonte = encontrar_fonte(sz, bold=False)
+        if all(draw.textbbox((0, 0), l, font=fonte)[2] <= max_w for l in linhas):
+            return fonte
+    return encontrar_fonte(min_sz, bold=False)
+
+
+def _processar_template(path: Path, zona: str, texto: str,
+                        cor=None) -> Image.Image:
+    """
+    Pipeline de template:
+      1. Carrega template Canva
+      2. Apaga zona de texto replicando textura do fundo
+      3. Calcula fonte máxima que cabe
+      4. Redesenha texto centralizado na zona
+    """
+    if cor is None:
+        cor = ROXO_VIBRANTE
+    img  = Image.open(path).convert("RGB")
+    img  = _apagar_zona(img, zona)
+    draw = ImageDraw.Draw(img)
+    W, H = img.size
+    top, bot, left, right = TEMPLATE_ZONAS[zona]
+    zona_w = int((right - left) * W)
+    cx     = W // 2
+
+    # Quebra texto respeitando \n
+    linhas_tmp = _quebrar_com_newlines(draw, texto,
+                                       encontrar_fonte(80, bold=False), zona_w)
+    fonte  = _fonte_maxima(draw, linhas_tmp, zona, (W, H))
+    linhas = _quebrar_com_newlines(draw, texto, fonte, zona_w)
+
+    bbox_s = draw.textbbox((0, 0), "Ag", font=fonte)
+    line_h = int((bbox_s[3] - bbox_s[1]) * 1.45)
+    total_h = len(linhas) * line_h
+
+    y_start = int(top * H)
+    y_end   = int(bot * H)
+    y = y_start + (y_end - y_start - total_h) // 2
+
+    for linha in linhas:
+        draw.text((cx, y), linha, font=fonte, fill=cor, anchor="mt")
+        y += line_h
+
+    return img
+
+
 def _carregar_template(nome_arquivo: str) -> Image.Image | None:
     """Carrega template PNG do Canva se disponível na pasta templates/carrossel/."""
     path = TEMPLATES_DIR / nome_arquivo
@@ -163,8 +272,13 @@ def _carregar_template(nome_arquivo: str) -> Image.Image | None:
     return None
 
 
+def _templates_completos() -> bool:
+    """Retorna True se os 6 slides numerados (1.png–6.png) existirem — uso direto, sem PIL."""
+    return all((TEMPLATES_DIR / f"{i}.png").exists() for i in range(1, 7))
+
+
 def _templates_ativos() -> bool:
-    """Retorna True se os 3 templates existirem."""
+    """Retorna True se os 3 fundos de background existirem — modo overlay de texto."""
     return all(
         (TEMPLATES_DIR / f).exists()
         for f in ["intro_bg.png", "cena_bg.png", "veredicto_bg.png"]
@@ -408,7 +522,45 @@ def main():
     hoje      = args.data or datetime.now().strftime("%Y-%m-%d")
     categoria = args.categoria
 
-    modo = "template Canva" if _templates_ativos() else "design padrão"
+    pasta_saida = Path(__file__).parent / "generated" / "reels"
+    pasta_saida.mkdir(parents=True, exist_ok=True)
+    slides = []
+
+    # ── Modo 1: templates completos (1.png–6.png) ─────────────────────────────
+    # Carrega design Canva, substitui texto do conteúdo pelo da nova categoria
+    if _templates_completos():
+        print(f"Carrossel — {categoria} — {hoje} [template Canva]")
+        roteiro_t  = carregar_roteiro(categoria, hoje)
+        cenas_t    = roteiro_t.get("cenas", [])[:4]
+        conclusao_t = roteiro_t.get("conclusao", "Sem defesa possível.")
+
+        # Slide 1 — intro
+        intro_txt = INTRO_TEXTOS.get(categoria, "A Dra. Julga\ntem um recado para você.")
+        s1 = _processar_template(TEMPLATES_DIR / "1.png", "intro", intro_txt)
+        p1 = pasta_saida / f"{hoje}_{categoria}_slide_01.png"
+        s1.save(str(p1)); slides.append(p1)
+        print("  Slide 1/6 — intro")
+
+        # Slides 2–5 — cenas
+        for i in range(4):
+            n   = i + 2
+            txt = cenas_t[i]["texto"] if i < len(cenas_t) else "..."
+            s   = _processar_template(TEMPLATES_DIR / f"{n}.png", "cena", txt)
+            p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
+            s.save(str(p)); slides.append(p)
+            print(f"  Slide {n}/6 — cena {i + 1}")
+
+        # Slide 6 — veredicto
+        s6 = _processar_template(TEMPLATES_DIR / "6.png", "veredicto", conclusao_t)
+        p6 = pasta_saida / f"{hoje}_{categoria}_slide_06.png"
+        s6.save(str(p6)); slides.append(p6)
+        print("  Slide 6/6 — veredicto")
+
+        print(f"\nSlides prontos em {pasta_saida}")
+        return slides
+
+    # ── Modo 2: geração PIL (design padrão ou background overlay) ─────────────
+    modo = "background Canva" if _templates_ativos() else "design padrão"
     print(f"Gerando carrossel v3 — {categoria} — {hoje} [{modo}]")
 
     roteiro   = carregar_roteiro(categoria, hoje)
@@ -418,9 +570,6 @@ def main():
         conclusao = cenas[-1]["texto"]
 
     total_slides = 6
-    pasta_saida  = Path(__file__).parent / "generated" / "reels"
-    pasta_saida.mkdir(parents=True, exist_ok=True)
-    slides = []
 
     print("  Slide 1/6 — Intro")
     s1 = slide_intro(categoria, 1, total_slides)
