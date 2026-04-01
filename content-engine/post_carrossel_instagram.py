@@ -159,6 +159,8 @@ def main():
     parser.add_argument("--categoria", required=True,
                         choices=list(CATEGORIAS_CAPTION.keys()))
     parser.add_argument("--data", default=None)
+    parser.add_argument("--output-id", action="store_true",
+                        help="Imprime apenas o media_id e encerra")
     args = parser.parse_args()
 
     for var, val in [("META_ACCESS_TOKEN", META_ACCESS_TOKEN),
@@ -202,6 +204,11 @@ def main():
     # Publicar
     print("\n🚀 PASSO 4: Publicando no @dra.julga")
     media_id = publicar_carrossel(carrossel_id)
+
+    if args.output_id:
+        print(media_id)
+        return
+
     print(f"  ✅ Publicado! media_id={media_id}")
 
     print(f"\n🎉 Carrossel publicado com sucesso!")

@@ -67,12 +67,26 @@ jobs:
             --categoria ${{ steps.categoria.outputs.categoria }}
 
       - name: Publicar carrossel no Instagram
+        id: publicar
         run: |
           cd content-engine
-          python post_carrossel_instagram.py \
+          MEDIA_ID=$(python post_carrossel_instagram.py \
+            --categoria ${{ steps.categoria.outputs.categoria }} \
+            --output-id)
+          echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+
+      - name: Postar comentário de engajamento
+        run: |
+          cd content-engine
+          python -m engagement.post_engagement \
+            --media_id ${{ steps.publicar.outputs.media_id }} \
             --categoria ${{ steps.categoria.outputs.categoria }}
         env:
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
 
       - name: Log de sucesso
