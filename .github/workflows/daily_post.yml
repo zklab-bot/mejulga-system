@@ -2,9 +2,9 @@ name: Daily Posts — Dra. Julga
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 08h Brasília
-    - cron: '0 15 * * *'   # 12h Brasília
-    - cron: '0 21 * * *'   # 18h Brasília
+    - cron: '0 15 * * *'   # 12h Brasília (UTC-3)
+    - cron: '0 21 * * *'   # 18h Brasília (UTC-3)
+    - cron: '0 0 * * *'    # 21h Brasília (UTC-3, meia-noite UTC)
   workflow_dispatch:
     inputs:
       categoria:
@@ -35,18 +35,21 @@ jobs:
           DIA=$(date -u +"%u")
           if [ -n "${{ github.event.inputs.categoria }}" ]; then
             CATEGORIA="${{ github.event.inputs.categoria }}"
-          elif [ "$HORA" = "11" ]; then
+          elif [ "$HORA" = "15" ]; then
+            # 12h BRT — provocação/engajamento
             CATS=("dinheiro" "amor" "trabalho" "dopamina" "vida_adulta" "social" "saude_mental")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
-          elif [ "$HORA" = "15" ]; then
+          elif [ "$HORA" = "21" ]; then
+            # 18h BRT — caso clínico
             CATS=("amor" "trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
           else
+            # 21h BRT (00h UTC) — CTA direto
             CATS=("trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro" "amor")
             CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
           fi
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
-          echo "📅 Categoria: $CATEGORIA"
+          echo "Categoria: $CATEGORIA"
 
       - name: Gerar roteiro
         run: |
@@ -71,7 +74,6 @@ jobs:
         env:
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
           IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
 
       - name: Log de sucesso
         run: |

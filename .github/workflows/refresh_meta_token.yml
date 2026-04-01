@@ -1,0 +1,31 @@
+name: Renovar Meta Access Token
+
+on:
+  schedule:
+    - cron: '0 10 1 * *'   # Dia 1 de cada mês às 10h UTC (~50 dias de margem)
+  workflow_dispatch:        # Permite rodar manualmente se necessário
+
+jobs:
+  renovar-token:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: pip install requests python-dotenv PyNaCl
+
+      - name: Renovar token e atualizar secret
+        run: python content-engine/refresh_meta_token.py
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_APP_ID:       ${{ secrets.META_APP_ID }}
+          META_APP_SECRET:   ${{ secrets.META_APP_SECRET }}
+          GH_PAT:            ${{ secrets.GH_PAT }}
+          GH_REPO:           ${{ github.repository }}

@@ -19,49 +19,67 @@ load_dotenv()
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 IG_ACCOUNT_ID     = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
 
+# Captions com Voice DNA da Dra. Julga.
+# Regras: frases curtas, declarativas, sem emoji no texto principal.
+# Ela não pede — ela intima. Ela não sugere — ela afirma.
 CATEGORIAS_CAPTION = {
     "dinheiro": (
-        "A Dra. Julga analisou sua relação com o dinheiro... 💳🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #dinheirobrasileiro #parcelado #humorbrasileiro "
-        "#financaspessoais #endividado #cartaodecredito"
+        "A Dra. Julga acessou seu extrato bancário.\n"
+        "O veredicto? Indefensável.\n\n"
+        "Você está intimado(a) a encaminhar esta prova para seu cúmplice.\n\n"
+        "Diagnóstico completo gratuito em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #FinancasPessoais #HumorBrasileiro "
+        "#Parcelado #Gastei #VidaAdulta #Identificacao"
     ),
     "amor": (
-        "A Dra. Julga analisou sua vida amorosa... 💔🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #amor #relacionamento #humorbrasileiro"
+        "A Dra. Julga leu suas mensagens.\n"
+        "Todas. Até as apagadas.\n\n"
+        "O julgamento já começou.\n\n"
+        "Manda no grupo da família sem contexto nenhum.\n\n"
+        "Diagnóstico completo em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #Amor #Relacionamento #HumorBrasileiro "
+        "#RelacionamentoToxico #Crush #Identificacao"
     ),
     "trabalho": (
-        "A Dra. Julga analisou sua carreira... 💼🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #trabalho #carreira #humorbrasileiro"
+        "A Dra. Julga monitorou sua segunda-feira.\n"
+        "De 8h às 18h. Você trabalhou 47 minutos.\n\n"
+        "Manda pra quem acha que é produtivo.\n\n"
+        "Diagnóstico completo em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #Trabalho #HomeOffice #HumorBrasileiro "
+        "#Procrastinacao #SegundaFeira #Identificacao"
     ),
     "dopamina": (
-        "A Dra. Julga diagnosticou seu vício em dopamina digital 📱🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #dopamina #saudemental #humorbrasileiro"
+        "A Dra. Julga cronometrou seu tempo de tela.\n"
+        "São 7h14 por dia.\n"
+        "Ela está preocupada. Você, não.\n\n"
+        "Manda pra quem tá no celular enquanto lê isso.\n\n"
+        "Diagnóstico completo em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #TempoDeAntena #VicioemCelular "
+        "#HumorBrasileiro #ScrollInfinito #Identificacao"
     ),
     "vida_adulta": (
-        "A Dra. Julga avaliou sua vida adulta... 😅🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #vidaadulta #humorbrasileiro"
+        "A Dra. Julga visitou sua geladeira.\n"
+        "Tinha ketchup, uma cerveja e arrependimento.\n\n"
+        "Manda no grupo da família sem contexto nenhum.\n\n"
+        "Diagnóstico completo em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #VidaAdulta #AdultingIsHard "
+        "#HumorBrasileiro #NinguemMePreparou #Identificacao"
     ),
     "social": (
-        "A Dra. Julga analisou sua vida social... 👥🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #vidasocial #humorbrasileiro"
+        "A Dra. Julga viu que você cancelou planos.\n"
+        "De novo. Terceiro sábado seguido.\n\n"
+        "Manda pra quem cancelou você semana passada.\n\n"
+        "Diagnóstico completo em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #CancelarPlanos #Introvertido "
+        "#HumorBrasileiro #AnguloSocial #Identificacao"
     ),
     "saude_mental": (
-        "A Dra. Julga emitiu seu laudo de saúde mental 🧠🩺\n\n"
-        "Desliza para ver o diagnóstico completo 👉\n\n"
-        "Descobre o teu em mejulga.com.br 👇\n\n"
-        "#mejulga #drajulga #saudemental #humorbrasileiro"
+        "A Dra. Julga acessou seus pensamentos das 3h da manhã.\n"
+        "O processo precisou de volume 2.\n\n"
+        "Manda pra quem você sabe que precisa ver isso.\n\n"
+        "Diagnóstico completo em mejulga.com.br\n\n"
+        "#MeJulga #DraJulga #SaudeMental #AutoCuidado "
+        "#HumorBrasileiro #Terapia #Identificacao"
     ),
 }
 
