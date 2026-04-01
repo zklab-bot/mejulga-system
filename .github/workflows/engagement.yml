@@ -1,0 +1,206 @@
+name: Engagement Bot — Dra. Julga
+
+on:
+  schedule:
+    - cron: '0 11 * * *'    # 08h BRT
+    - cron: '0 13 * * *'    # 10h BRT
+    - cron: '0 14 * * *'    # 11h BRT
+    - cron: '0 15 * * *'    # 12h BRT
+    - cron: '0 17 * * *'    # 14h BRT
+    - cron: '0 19 * * *'    # 16h BRT
+    - cron: '0 21 * * *'    # 18h BRT
+    - cron: '0 23 * * *'    # 20h BRT
+    - cron: '0 1  * * *'    # 22h BRT
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'Script para rodar manualmente'
+        required: true
+        default: 'reply_comments'
+        type: choice
+        options:
+          - reply_comments
+          - repost_stories
+          - reply_dms
+          - comment_growth
+          - follow_unfollow
+          - hashtag_intel
+
+env:
+  META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+  INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  IG_USERNAME: ${{ secrets.IG_USERNAME }}
+  IG_PASSWORD: ${{ secrets.IG_PASSWORD }}
+
+jobs:
+
+  reply-comments:
+    name: Reply Comments (a cada 2h, 08h–22h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'reply_comments' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (roda a cada 2h)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          # Horas UTC para 08h-22h BRT (11-01 UTC) a cada 2h: 11,13,15,17,19,21,23,1
+          if echo "11 13 15 17 19 21 23 1" | grep -wq "$HOUR"; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install anthropic python-dotenv requests
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.reply_comments
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: engagement state reply-comments [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
+
+  repost-stories:
+    name: Repost Stories (a cada 4h, 08h–22h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'repost_stories' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (roda a cada 4h)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          if echo "11 15 19 23" | grep -wq "$HOUR"; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install python-dotenv requests
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.repost_stories
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: engagement state repost-stories [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
+
+  reply-dms:
+    name: Reply DMs (a cada 3h, 08h–22h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'reply_dms' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (roda a cada 3h)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          if echo "11 14 17 20 23" | grep -wq "$HOUR"; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install anthropic python-dotenv requests
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.reply_dms
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: engagement state reply-dms [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
+
+  comment-growth:
+    name: Comment Growth (1x/dia, 14h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'comment_growth' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (roda às 14h BRT = 17h UTC)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          if [ "$HOUR" = "17" ]; then echo "run=true" >> $GITHUB_OUTPUT
+          else echo "run=false" >> $GITHUB_OUTPUT; fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install anthropic python-dotenv requests
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.comment_growth
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: engagement state comment-growth [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
+
+  follow-unfollow:
+    name: Follow/Unfollow (1x/dia, 10h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'follow_unfollow' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (roda às 10h BRT = 13h UTC)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          if [ "$HOUR" = "13" ]; then echo "run=true" >> $GITHUB_OUTPUT
+          else echo "run=false" >> $GITHUB_OUTPUT; fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install instagrapi python-dotenv
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.follow_unfollow
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: engagement state follow-unfollow [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
+
+  hashtag-intel:
+    name: Hashtag Intelligence (domingo, 11h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'hashtag_intel' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (domingo 11h BRT = domingo 14h UTC)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          DAY=$(date -u +"%u")  # 7 = domingo
+          if [ "$DAY" = "7" ] && [ "$HOUR" = "14" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install python-dotenv requests
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.hashtag_intel
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: hashtag intel report [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
