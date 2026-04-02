@@ -22,31 +22,33 @@ def _account_id() -> str:
 
 
 def _buscar_mencoes() -> list:
+    """Retorna posts de feed onde @dra.julga foi marcada."""
     data = meta_client.get(
         f"{_account_id()}/tags",
-        params={"fields": "id,media_type,timestamp,media_url", "limit": "20"},
+        params={"fields": "id,media_type,timestamp", "limit": "20"},
     )
     return data.get("data", [])
 
 
-def _buscar_media_url(media_id: str) -> str:
-    data = meta_client.get(media_id, params={"fields": "media_url,media_type"})
-    return data.get("media_url", "")
-
-
-def _repostar(media_url: str, source_id: str, dry_run: bool) -> bool:
+def _repostar(media_id: str, dry_run: bool) -> bool:
+    """Reshara uma menção como story usando source_type MENTION_RESHARE."""
     account_id = _account_id()
     if dry_run:
-        print(f"  [DRY RUN] Repostaria menção {source_id}: {media_url}")
+        print(f"  [DRY RUN] Repostaria menção {media_id}")
         return True
 
+    # Cria container de story a partir da menção original (sem precisar de URL)
     container = meta_client.post(
         f"{account_id}/media",
-        data={"media_type": "STORIES", "image_url": media_url},
+        data={
+            "media_type": "STORIES",
+            "source_type": "MENTION_RESHARE",
+            "original_media_id": media_id,
+        },
     )
     container_id = container.get("id")
     if not container_id:
-        print(f"  ❌ Falha ao criar container para {source_id}")
+        print(f"  ❌ Falha ao criar container para {media_id}")
         return False
 
     result = meta_client.post(
@@ -73,13 +75,8 @@ def executar(dry_run: bool = False) -> None:
         if mid in repostados:
             continue
 
-        media_url = mencao.get("media_url") or _buscar_media_url(mid)
-        if not media_url:
-            print(f"  ⚠️  URL não encontrada para {mid}")
-            continue
-
-        print(f"  🔄 Repostando {mid}...")
-        if _repostar(media_url, mid, dry_run):
+        print(f"  🔄 Repostando menção {mid}...")
+        if _repostar(mid, dry_run):
             repostados.add(mid)
             total += 1
 

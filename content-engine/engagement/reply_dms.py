@@ -38,6 +38,7 @@ def _buscar_conversas() -> list:
     data = meta_client.get(
         f"{_account_id()}/conversations",
         params={
+            "platform": "instagram",
             "fields": "id,messages{id,message,from,created_time}",
             "limit": "20",
         },
@@ -64,6 +65,8 @@ def executar(dry_run: bool = False) -> None:
     conversas = _buscar_conversas()
     print(f"  📬 {len(conversas)} conversa(s) encontrada(s)")
 
+    account_id = _account_id()
+
     for conversa in conversas:
         if total >= MAX_REPLIES_PER_RUN:
             break
@@ -75,21 +78,31 @@ def executar(dry_run: bool = False) -> None:
         if not mensagens:
             continue
 
-        ultima = mensagens[0]
-        texto = ultima.get("message", "")
+        # Encontra a mensagem mais recente enviada por outra pessoa (não pela nossa conta)
+        sender_id = None
+        texto = ""
+        for msg in mensagens:
+            from_id = msg.get("from", {}).get("id", "")
+            if from_id and from_id != account_id:
+                sender_id = from_id
+                texto = msg.get("message", "")
+                break
+
+        if not sender_id or not texto:
+            continue
         if not _contem_keyword(texto):
             continue
 
-        print(f"  📨 Keyword: {texto[:60]}...")
+        print(f"  📨 Keyword de {sender_id}: {texto[:60]}...")
         resposta = _gerar_resposta(texto)
         print(f"  🤖 {resposta}")
 
         if dry_run:
-            print(f"  [DRY RUN] Responderia conversa {cid}")
+            print(f"  [DRY RUN] Responderia {sender_id} na conversa {cid}")
         else:
             meta_client.post(
-                f"{_account_id()}/messages",
-                data={"recipient": {"id": cid}, "message": {"text": resposta}},
+                f"{account_id}/messages",
+                data={"recipient": {"id": sender_id}, "message": {"text": resposta}},
             )
             print(f"  ✅ DM enviada!")
 

@@ -65,8 +65,24 @@ def executar(dry_run: bool = False) -> None:
     cl = None
     if not dry_run:
         cl = Client()
-        cl.login(username, password)
-        print(f"  ✅ Login como @{username}")
+        saved = st.get("instagrapi_session")
+        logged_in = False
+
+        if saved:
+            try:
+                cl.set_settings(saved)
+                cl.get_timeline_feed()  # Valida se a sessão ainda funciona
+                print(f"  ✅ Sessão restaurada para @{username}")
+                logged_in = True
+            except Exception:
+                print(f"  ⚠️  Sessão expirada — fazendo novo login...")
+                cl = Client()
+
+        if not logged_in:
+            cl.login(username, password)
+            print(f"  ✅ Login como @{username}")
+
+        st["instagrapi_session"] = cl.get_settings()
 
     # --- Fase FOLLOW ---
     hashtag = HASHTAGS_NICHO[datetime.now().weekday() % len(HASHTAGS_NICHO)]
