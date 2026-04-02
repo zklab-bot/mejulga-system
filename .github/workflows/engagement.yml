@@ -16,15 +16,13 @@ on:
       script:
         description: 'Script para rodar manualmente'
         required: true
-        default: 'reply_comments'
+        default: 'comment_growth'
         type: choice
         options:
-          - reply_comments
-          - repost_stories
-          - reply_dms
           - comment_growth
           - follow_unfollow
           - hashtag_intel
+          - repost_stories
 
 env:
   META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
@@ -34,36 +32,6 @@ env:
   IG_PASSWORD: ${{ secrets.IG_PASSWORD }}
 
 jobs:
-
-  reply-comments:
-    name: Reply Comments (a cada 2h, 08h–22h BRT)
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'reply_comments' ||
-      github.event_name == 'schedule'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Verificar horário (roda a cada 2h)
-        id: check
-        run: |
-          HOUR=$(date -u +"%H" | sed 's/^0//')
-          # Horas UTC para 08h-22h BRT (11-01 UTC) a cada 2h: 11,13,15,17,19,21,23,1
-          if echo "11 13 15 17 19 21 23 1" | grep -wq "$HOUR"; then
-            echo "run=true" >> $GITHUB_OUTPUT
-          else
-            echo "run=false" >> $GITHUB_OUTPUT
-          fi
-      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
-        run: pip install anthropic python-dotenv requests
-      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
-        run: cd content-engine && python -m engagement.reply_comments
-      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: engagement state reply-comments [skip ci]"
-          file_pattern: content-engine/generated/engagement_state.json
 
   repost-stories:
     name: Repost Stories (a cada 4h, 08h–22h BRT)
@@ -92,35 +60,6 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: engagement state repost-stories [skip ci]"
-          file_pattern: content-engine/generated/engagement_state.json
-
-  reply-dms:
-    name: Reply DMs (a cada 3h, 08h–22h BRT)
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'reply_dms' ||
-      github.event_name == 'schedule'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Verificar horário (roda a cada 3h)
-        id: check
-        run: |
-          HOUR=$(date -u +"%H" | sed 's/^0//')
-          if echo "11 14 17 20 23" | grep -wq "$HOUR"; then
-            echo "run=true" >> $GITHUB_OUTPUT
-          else
-            echo "run=false" >> $GITHUB_OUTPUT
-          fi
-      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
-        run: pip install anthropic python-dotenv requests
-      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
-        run: cd content-engine && python -m engagement.reply_dms
-      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: engagement state reply-dms [skip ci]"
           file_pattern: content-engine/generated/engagement_state.json
 
   comment-growth:
