@@ -24,13 +24,14 @@ def test_handle_dm_responde_mensagem():
     with patch("engagement.shared.meta_client.post") as mock_post, \
          patch("engagement.shared.claude_client.generate", return_value="Diagnóstico: curioso crônico."), \
          patch("engagement.shared.state.load", return_value=dict(BASE_STATE)), \
-         patch("engagement.shared.state.save"), \
+         patch("engagement.shared.state.save") as mock_save, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_dm(value)
     mock_post.assert_called_once()
     args = mock_post.call_args
     assert args[0][0] == f"{ACCOUNT_ID}/messages"
     assert args[1]["data"]["recipient"]["id"] == "999"
+    mock_save.assert_called_once()
 
 
 def test_handle_dm_ignora_propria_conta():
@@ -77,12 +78,13 @@ def test_handle_comment_responde():
     with patch("engagement.shared.meta_client.post") as mock_post, \
          patch("engagement.shared.claude_client.generate", return_value="Obrigada!"), \
          patch("engagement.shared.state.load", return_value=dict(BASE_STATE)), \
-         patch("engagement.shared.state.save"), \
+         patch("engagement.shared.state.save") as mock_save, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_comment(value)
     mock_post.assert_called_once()
     args = mock_post.call_args
     assert args[0][0] == "comment_abc/replies"
+    mock_save.assert_called_once()
 
 
 def test_handle_comment_ignora_propria_conta():
