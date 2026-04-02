@@ -1,12 +1,29 @@
 import os
 import threading
-from engagement.shared import meta_client, claude_client, state
+import requests as _requests
+from engagement.shared import claude_client, state
 
+BASE_URL = "https://graph.facebook.com/v19.0"
 _state_lock = threading.Lock()
 
 
 def _account_id() -> str:
     return os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID", "")
+
+
+def _page_token() -> str:
+    return os.getenv("META_PAGE_TOKEN") or os.getenv("META_ACCESS_TOKEN", "")
+
+
+def _post(endpoint: str, data: dict) -> dict:
+    """POST usando META_PAGE_TOKEN (necessário para DMs e replies de comentários)."""
+    resp = _requests.post(
+        f"{BASE_URL}/{endpoint}",
+        params={"access_token": _page_token()},
+        data=data,
+        timeout=30,
+    )
+    return resp.json()
 
 
 def handle_dm(value: dict) -> None:
@@ -32,7 +49,7 @@ def handle_dm(value: dict) -> None:
             max_tokens=200,
         )
 
-        meta_client.post(
+        _post(
             f"{_account_id()}/messages",
             data={"recipient": {"id": sender_id}, "message": {"text": resposta}},
         )
@@ -69,7 +86,7 @@ def handle_comment(value: dict) -> None:
             max_tokens=150,
         )
 
-        meta_client.post(f"{comment_id}/replies", data={"message": resposta})
+        _post(f"{comment_id}/replies", data={"message": resposta})
         print(f"  ✅ Comentário {comment_id} respondido")
 
         st.setdefault("comments_replied", []).append(comment_id)

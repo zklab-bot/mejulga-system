@@ -21,16 +21,18 @@ def test_handle_dm_responde_mensagem():
         "sender": {"id": "999"},
         "message": {"text": "me julga!"},
     }
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"id": "msg_1"}
+    with patch("webhook.handlers._requests.post", return_value=mock_resp) as mock_post, \
          patch("engagement.shared.claude_client.generate", return_value="Diagnóstico: curioso crônico."), \
          patch("engagement.shared.state.load", return_value=dict(BASE_STATE)), \
          patch("engagement.shared.state.save") as mock_save, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_dm(value)
     mock_post.assert_called_once()
-    args = mock_post.call_args
-    assert args[0][0] == f"{ACCOUNT_ID}/messages"
-    assert args[1]["data"]["recipient"]["id"] == "999"
+    call_kwargs = mock_post.call_args
+    assert f"{ACCOUNT_ID}/messages" in call_kwargs[0][0]
+    assert call_kwargs[1]["data"]["recipient"]["id"] == "999"
     mock_save.assert_called_once()
 
 
@@ -40,7 +42,7 @@ def test_handle_dm_ignora_propria_conta():
         "sender": {"id": ACCOUNT_ID},
         "message": {"text": "teste"},
     }
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    with patch("webhook.handlers._requests.post") as mock_post, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_dm(value)
     mock_post.assert_not_called()
@@ -49,7 +51,7 @@ def test_handle_dm_ignora_propria_conta():
 def test_handle_dm_ignora_texto_vazio():
     from webhook.handlers import handle_dm
     value = {"sender": {"id": "999"}, "message": {}}
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    with patch("webhook.handlers._requests.post") as mock_post, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_dm(value)
     mock_post.assert_not_called()
@@ -60,7 +62,7 @@ def test_handle_dm_deduplica():
     value = {"sender": {"id": "999"}, "message": {"text": "oi"}}
     state = dict(BASE_STATE)
     state["dms_replied"] = ["999"]
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    with patch("webhook.handlers._requests.post") as mock_post, \
          patch("engagement.shared.state.load", return_value=state), \
          patch("engagement.shared.state.save"), \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
@@ -75,15 +77,17 @@ def test_handle_comment_responde():
         "text": "adorei o post!",
         "from": {"id": "888"},
     }
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"id": "reply_1"}
+    with patch("webhook.handlers._requests.post", return_value=mock_resp) as mock_post, \
          patch("engagement.shared.claude_client.generate", return_value="Obrigada!"), \
          patch("engagement.shared.state.load", return_value=dict(BASE_STATE)), \
          patch("engagement.shared.state.save") as mock_save, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_comment(value)
     mock_post.assert_called_once()
-    args = mock_post.call_args
-    assert args[0][0] == "comment_abc/replies"
+    call_kwargs = mock_post.call_args
+    assert "comment_abc/replies" in call_kwargs[0][0]
     mock_save.assert_called_once()
 
 
@@ -94,7 +98,7 @@ def test_handle_comment_ignora_propria_conta():
         "text": "post meu",
         "from": {"id": ACCOUNT_ID},
     }
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    with patch("webhook.handlers._requests.post") as mock_post, \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
         handle_comment(value)
     mock_post.assert_not_called()
@@ -105,7 +109,7 @@ def test_handle_comment_deduplica():
     value = {"id": "comment_abc", "text": "oi", "from": {"id": "888"}}
     state = dict(BASE_STATE)
     state["comments_replied"] = ["comment_abc"]
-    with patch("engagement.shared.meta_client.post") as mock_post, \
+    with patch("webhook.handlers._requests.post") as mock_post, \
          patch("engagement.shared.state.load", return_value=state), \
          patch("engagement.shared.state.save"), \
          patch.dict(os.environ, {"INSTAGRAM_ACCOUNT_ID": ACCOUNT_ID}):
