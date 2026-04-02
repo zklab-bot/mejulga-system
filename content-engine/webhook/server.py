@@ -38,6 +38,11 @@ async def receive(request: Request):
         return {"status": "ok"}
 
     for entry in payload.get("entry", []):
+        # Formato Messenger: entry[].messaging[] (DMs do Instagram)
+        for msg_event in entry.get("messaging", []):
+            handlers.handle_dm(msg_event)
+
+        # Formato Instagram Webhooks: entry[].changes[] (comentários, menções)
         for change in entry.get("changes", []):
             field = change.get("field")
             value = change.get("value", {})
