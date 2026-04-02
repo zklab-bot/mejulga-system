@@ -13,7 +13,6 @@ import json
 import argparse
 from datetime import datetime
 from pathlib import Path
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
 
@@ -157,40 +156,12 @@ def _desenhar_carimbo(img: Image.Image):
 # ─── Templates Canva ──────────────────────────────────────────────────────────
 
 # Zonas de texto como fração da imagem (top, bottom, left, right)
-# Calibradas para templates 1080×1350 (4:5 Instagram portrait)
-# Define onde o conteúdo dinâmico é apagado e reescrito
+# Fundos limpos exportados do Canva — zonas mapeadas das áreas vazias reais
 TEMPLATE_ZONAS = {
-    "intro":     (0.17, 0.68, 0.04, 0.96),   # texto intro — y=229-918 cobre y=485-870
-    "cena":      (0.32, 0.61, 0.04, 0.96),   # abaixo do label (y≈380-405) — cobre texto y=600-796
-    "veredicto": (0.39, 0.49, 0.04, 0.96),   # texto veredicto — y=527-662 cobre y=565-615
+    "intro":     (0.19, 0.74, 0.05, 0.95),  # área vazia: y=261-1002 (741px)
+    "cena":      (0.30, 0.74, 0.05, 0.95),  # abaixo do label y=408-1002 (594px)
+    "veredicto": (0.39, 0.50, 0.05, 0.95),  # entre CULPADO e LEMBRETE y=525-669 (144px)
 }
-
-# Faixa limpa (entre header e labels) para amostrar textura do fundo
-FUNDO_SAMPLE = (0.09, 0.13, 0.30, 0.70)
-
-
-def _sample_bg(img: Image.Image) -> tuple[np.ndarray, np.ndarray]:
-    """Retorna média e desvio da cor do fundo em região limpa."""
-    W, H = img.size
-    y0, y1 = int(FUNDO_SAMPLE[0] * H), int(FUNDO_SAMPLE[1] * H)
-    x0, x1 = int(FUNDO_SAMPLE[2] * W), int(FUNDO_SAMPLE[3] * W)
-    region = np.array(img.crop((x0, y0, x1, y1)), dtype=np.float32)
-    mean = region.mean(axis=(0, 1))
-    std  = region.std(axis=(0, 1)).clip(0, 5)
-    return mean, std
-
-
-def _apagar_zona(img: Image.Image, zona: str) -> Image.Image:
-    """Apaga a zona de texto replicando a textura do fundo."""
-    W, H = img.size
-    top, bot, left, right = TEMPLATE_ZONAS[zona]
-    x0, y0 = int(left * W), int(top * H)
-    x1, y1 = int(right * W), int(bot * H)
-    bg_mean, bg_std = _sample_bg(img)
-    arr = np.array(img, dtype=np.float32)
-    noise = np.random.normal(0, bg_std, (y1 - y0, x1 - x0, 3))
-    arr[y0:y1, x0:x1] = np.clip(bg_mean + noise, 0, 255)
-    return Image.fromarray(arr.astype(np.uint8))
 
 
 def _quebrar_com_newlines(draw: ImageDraw.ImageDraw,
@@ -212,14 +183,21 @@ def _quebrar_com_newlines(draw: ImageDraw.ImageDraw,
     return linhas
 
 
-def _fonte_maxima(draw, linhas, zona, img_size, max_sz=80, min_sz=28):
-    """Encontra o maior tamanho de fonte que cabe na zona."""
+def _fonte_maxima(draw, texto: str, zona: str, img_size,
+                  max_sz=80, min_sz=28) -> ImageFont.FreeTypeFont:
+    """Encontra o maior tamanho de fonte que cabe na zona (largura e altura)."""
     W, H = img_size
-    _, _, left, right = TEMPLATE_ZONAS[zona]
+    top, bot, left, right = TEMPLATE_ZONAS[zona]
     max_w = int((right - left) * W)
+    max_h = int((bot - top) * H)
     for sz in range(max_sz, min_sz - 1, -2):
         fonte = encontrar_fonte(sz, bold=False)
-        if all(draw.textbbox((0, 0), l, font=fonte)[2] <= max_w for l in linhas):
+        linhas = _quebrar_com_newlines(draw, texto, fonte, max_w)
+        bbox_s = draw.textbbox((0, 0), "Ag", font=fonte)
+        line_h = int((bbox_s[3] - bbox_s[1]) * 1.45)
+        total_h = len(linhas) * line_h
+        fits_w = all(draw.textbbox((0, 0), l, font=fonte)[2] <= max_w for l in linhas)
+        if fits_w and total_h <= max_h:
             return fonte
     return encontrar_fonte(min_sz, bold=False)
 
@@ -227,26 +205,19 @@ def _fonte_maxima(draw, linhas, zona, img_size, max_sz=80, min_sz=28):
 def _processar_template(path: Path, zona: str, texto: str,
                         cor=None) -> Image.Image:
     """
-    Pipeline de template:
-      1. Carrega template Canva
-      2. Apaga zona de texto replicando textura do fundo
-      3. Calcula fonte máxima que cabe
-      4. Redesenha texto centralizado na zona
+    Carrega fundo limpo do Canva e desenha o texto por cima, centralizado na zona.
+    Não apaga nada — o fundo já vem sem texto.
     """
     if cor is None:
         cor = ROXO_VIBRANTE
     img  = Image.open(path).convert("RGB")
-    img  = _apagar_zona(img, zona)
     draw = ImageDraw.Draw(img)
     W, H = img.size
     top, bot, left, right = TEMPLATE_ZONAS[zona]
     zona_w = int((right - left) * W)
     cx     = W // 2
 
-    # Quebra texto respeitando \n
-    linhas_tmp = _quebrar_com_newlines(draw, texto,
-                                       encontrar_fonte(80, bold=False), zona_w)
-    fonte  = _fonte_maxima(draw, linhas_tmp, zona, (W, H))
+    fonte  = _fonte_maxima(draw, texto, zona, (W, H))
     linhas = _quebrar_com_newlines(draw, texto, fonte, zona_w)
 
     bbox_s = draw.textbbox((0, 0), "Ag", font=fonte)
