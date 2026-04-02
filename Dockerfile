@@ -1,6 +1,6 @@
 FROM python:3.11-slim
-WORKDIR /app
-COPY content-engine/ ./content-engine/
+WORKDIR /app/content-engine
+COPY content-engine/ .
 RUN pip install --no-cache-dir fastapi uvicorn anthropic requests python-dotenv
 EXPOSE 8000
-CMD ["uvicorn", "content-engine.webhook.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "webhook.server:app", "--host", "0.0.0.0", "--port", "8000"]
