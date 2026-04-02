@@ -26,3 +26,7 @@ def test_header_sem_prefixo_sha256():
 def test_secret_vazio_retorna_true():
     # Sem APP_SECRET configurado, deixa passar (ambiente de dev)
     assert verify_signature(b"qualquer", "sha256=qualquer", "") is True
+
+
+def test_header_none_retorna_false():
+    assert verify_signature(b"payload", None, "segredo") is False
