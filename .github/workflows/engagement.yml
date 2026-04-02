@@ -2,7 +2,8 @@ name: Engagement Bot — Dra. Julga
 
 on:
   schedule:
-    - cron: '0 11 * * *'    # 08h BRT
+    - cron: '*/10 11-1 * * *'  # a cada 10min das 08h às 22h BRT (11h-01h UTC)
+    - cron: '0 11 * * *'    # 08h BRT (outros jobs)
     - cron: '0 13 * * *'    # 10h BRT
     - cron: '0 14 * * *'    # 11h BRT
     - cron: '0 15 * * *'    # 12h BRT
@@ -16,9 +17,10 @@ on:
       script:
         description: 'Script para rodar manualmente'
         required: true
-        default: 'comment_growth'
+        default: 'reply_comments'
         type: choice
         options:
+          - reply_comments
           - comment_growth
           - follow_unfollow
           - hashtag_intel
@@ -142,4 +144,33 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: hashtag intel report [skip ci]"
+          file_pattern: content-engine/generated/engagement_state.json
+
+  reply-comments:
+    name: Reply Comments (a cada 10min, 08h–22h BRT)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.script == 'reply_comments' ||
+      github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Verificar horário (08h–22h BRT = 11h–01h UTC)
+        id: check
+        run: |
+          HOUR=$(date -u +"%H" | sed 's/^0//')
+          if echo "11 12 13 14 15 16 17 18 19 20 21 22 23 0 1" | grep -wq "$HOUR"; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install anthropic python-dotenv requests
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: cd content-engine && python -m engagement.reply_comments
+      - if: steps.check.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: engagement state reply-comments [skip ci]"
           file_pattern: content-engine/generated/engagement_state.json
