@@ -2,71 +2,124 @@ name: Daily Posts — Dra. Julga
 
 on:
   schedule:
-    - cron: '0 15 * * *'   # 12h Brasília (UTC-3)
-    - cron: '0 21 * * *'   # 18h Brasília (UTC-3)
-    - cron: '0 0 * * *'    # 21h Brasília (UTC-3, meia-noite UTC)
+    - cron: '0 12 * * *'   # 09h BRT
+    - cron: '0 15 * * *'   # 12h BRT
+    - cron: '0 18 * * *'   # 15h BRT
+    - cron: '0 21 * * *'   # 18h BRT
+    - cron: '0 0  * * *'   # 21h BRT
   workflow_dispatch:
     inputs:
       categoria:
         description: 'Categoria do post'
         required: false
-        default: 'dinheiro'
+        default: ''
+
+# Garante que apenas uma instância rode por vez — nunca em paralelo
+concurrency:
+  group: daily-post
+  cancel-in-progress: false
+
+env:
+  META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+  IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
 jobs:
   publicar:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout do repositório
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Instalar dependências
         run: pip install pillow anthropic python-dotenv requests
 
-      - name: Definir categoria do post
+      # ── Cada slot horário usa uma rotação diferente das 7 categorias.
+      # Assim, no mesmo dia, os 5 slots sempre produzem categorias distintas.
+      # Rotação por dia da semana (1=seg … 7=dom), índice = (DIA-1) % 7
+      #
+      #  UTC  BRT  Slot  Segunda  Terça   Quarta   Quinta  Sexta   Sábado  Domingo
+      #  12h  09h   A    dinheiro  amor   trabalho dopamina vidaad  social  saude
+      #  15h  12h   B    amor    trabalho dopamina  vidaad  social  saude   dinheiro
+      #  18h  15h   C    trabalho dopamina vidaad   social  saude  dinheiro  amor
+      #  21h  18h   D    dopamina  vidaad  social   saude  dinheiro  amor  trabalho
+      #  00h  21h   E    vidaad   social   saude   dinheiro  amor  trabalho dopamina
+      #
+      - name: Definir categoria
         id: categoria
         run: |
-          HORA=$(date -u +"%H")
+          HORA=$(date -u +"%H" | sed 's/^0//')
           DIA=$(date -u +"%u")
-          if [ -n "${{ github.event.inputs.categoria }}" ]; then
-            CATEGORIA="${{ github.event.inputs.categoria }}"
-          elif [ "$HORA" = "15" ]; then
-            # 12h BRT — provocação/engajamento
-            CATS=("dinheiro" "amor" "trabalho" "dopamina" "vida_adulta" "social" "saude_mental")
-            CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
-          elif [ "$HORA" = "21" ]; then
-            # 18h BRT — caso clínico
-            CATS=("amor" "trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro")
-            CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
-          else
-            # 21h BRT (00h UTC) — CTA direto
-            CATS=("trabalho" "dopamina" "vida_adulta" "social" "saude_mental" "dinheiro" "amor")
-            CATEGORIA="${CATS[$((($DIA - 1) % 7))]}"
+          IDX=$(( (DIA - 1) % 7 ))
+
+          MANUAL="${{ github.event.inputs.categoria }}"
+          if [ -n "$MANUAL" ]; then
+            echo "categoria=$MANUAL" >> $GITHUB_OUTPUT
+            echo "Categoria (manual): $MANUAL"
+            exit 0
           fi
+
+          declare -a SLOT_A=("dinheiro"  "amor"      "trabalho"   "dopamina"   "vida_adulta" "social"     "saude_mental")
+          declare -a SLOT_B=("amor"      "trabalho"  "dopamina"   "vida_adulta" "social"     "saude_mental" "dinheiro")
+          declare -a SLOT_C=("trabalho"  "dopamina"  "vida_adulta" "social"    "saude_mental" "dinheiro"   "amor")
+          declare -a SLOT_D=("dopamina"  "vida_adulta" "social"   "saude_mental" "dinheiro"  "amor"       "trabalho")
+          declare -a SLOT_E=("vida_adulta" "social"  "saude_mental" "dinheiro" "amor"       "trabalho"   "dopamina")
+
+          if   [ "$HORA" = "12" ]; then CATEGORIA="${SLOT_A[$IDX]}"
+          elif [ "$HORA" = "15" ]; then CATEGORIA="${SLOT_B[$IDX]}"
+          elif [ "$HORA" = "18" ]; then CATEGORIA="${SLOT_C[$IDX]}"
+          elif [ "$HORA" = "21" ]; then CATEGORIA="${SLOT_D[$IDX]}"
+          else                          CATEGORIA="${SLOT_E[$IDX]}"
+          fi
+
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
-          echo "Categoria: $CATEGORIA"
+          echo "Categoria (slot ${HORA}h UTC): $CATEGORIA"
+
+      # ── Verificação de duplicata ─────────────────────────────────────────
+      # Chave: {data_utc}_{categoria} — salva em engagement_state.json
+      - name: Verificar duplicata
+        id: dedup
+        run: |
+          HOJE=$(date -u +"%Y-%m-%d")
+          CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
+          STATE="content-engine/generated/engagement_state.json"
+
+          if [ ! -f "$STATE" ]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          JA_PUBLICADO=$(python3 - <<'PYEOF'
+import json, sys
+state_file = "content-engine/generated/engagement_state.json"
+with open(state_file) as f:
+    state = json.load(f)
+chave = "$CHAVE"
+if chave in state.get("posts_published", []):
+    print("true")
+else:
+    print("false")
+PYEOF
+)
+          echo "skip=$JA_PUBLICADO" >> $GITHUB_OUTPUT
+          if [ "$JA_PUBLICADO" = "true" ]; then
+            echo "⏭️  Post '$CHAVE' já publicado hoje — pulando."
+          fi
 
       - name: Gerar roteiro
-        run: |
-          cd content-engine
-          python generate_reels.py \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --sem_audio
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        if: steps.dedup.outputs.skip != 'true'
+        run: cd content-engine && python generate_reels.py --categoria ${{ steps.categoria.outputs.categoria }} --sem_audio
 
       - name: Gerar slides do carrossel
-        run: |
-          cd content-engine
-          python gerar_carrossel.py \
-            --categoria ${{ steps.categoria.outputs.categoria }}
+        if: steps.dedup.outputs.skip != 'true'
+        run: cd content-engine && python gerar_carrossel.py --categoria ${{ steps.categoria.outputs.categoria }}
 
       - name: Publicar carrossel no Instagram
+        if: steps.dedup.outputs.skip != 'true'
         id: publicar
         run: |
           cd content-engine
@@ -74,23 +127,42 @@ jobs:
             --categoria ${{ steps.categoria.outputs.categoria }} \
             --output-id)
           echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
-        env:
-          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-          IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+
+      # ── Registra no estado imediatamente após publicar ───────────────────
+      - name: Registrar post publicado
+        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
+        run: |
+          HOJE=$(date -u +"%Y-%m-%d")
+          CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
+          python3 - <<PYEOF
+import json
+state_file = "content-engine/generated/engagement_state.json"
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+except Exception:
+    state = {}
+published = state.setdefault("posts_published", [])
+if "$CHAVE" not in published:
+    published.append("$CHAVE")
+with open(state_file, "w") as f:
+    json.dump(state, f, ensure_ascii=False, indent=2)
+print("Registrado: $CHAVE")
+PYEOF
 
       - name: Postar comentário de engajamento
+        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           cd content-engine
           python -m engagement.post_engagement \
             --media_id ${{ steps.publicar.outputs.media_id }} \
             --categoria ${{ steps.categoria.outputs.categoria }}
-        env:
-          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
 
-      - name: Log de sucesso
-        run: |
-          echo "🎉 Carrossel publicado!"
-          echo "📅 Data: $(date -u)"
-          echo "🏷️  Categoria: ${{ steps.categoria.outputs.categoria }}"
+      - name: Commit do estado e slides gerados
+        if: steps.dedup.outputs.skip != 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: post ${{ steps.categoria.outputs.categoria }} publicado [skip ci]"
+          file_pattern: |
+            content-engine/generated/engagement_state.json
+            content-engine/generated/reels/
