@@ -2,7 +2,7 @@ name: Engagement Bot — Dra. Julga
 
 on:
   schedule:
-    - cron: '*/10 11-1 * * *'  # a cada 10min das 08h às 22h BRT (11h-01h UTC)
+    - cron: '*/10 11-23,0,1 * * *'  # a cada 10min das 08h às 22h BRT (11h-01h UTC)
     - cron: '0 11 * * *'    # 08h BRT (outros jobs)
     - cron: '0 13 * * *'    # 10h BRT
     - cron: '0 14 * * *'    # 11h BRT
