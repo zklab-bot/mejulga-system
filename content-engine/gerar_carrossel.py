@@ -515,7 +515,7 @@ def main():
         # Slides 2–5 — cenas
         for i in range(4):
             n   = i + 2
-            txt = cenas_t[i]["texto"] if i < len(cenas_t) else "..."
+            txt = (cenas_t[i].get("texto_slide") or cenas_t[i]["texto"]) if i < len(cenas_t) else "..."
             s   = _processar_template(TEMPLATES_DIR / f"{n}.png", "cena", txt)
             p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
             s.save(str(p)); slides.append(p)
@@ -536,9 +536,12 @@ def main():
 
     roteiro   = carregar_roteiro(categoria, hoje)
     cenas     = roteiro.get("cenas", [])[:4]
-    conclusao = roteiro.get("conclusao", "Sem defesa possível.")
-    if not conclusao and cenas:
-        conclusao = cenas[-1]["texto"]
+    todas_cenas = roteiro.get("cenas", [])
+    conclusao = (
+        roteiro.get("conclusao")
+        or (todas_cenas[4]["texto"] if len(todas_cenas) > 4 else None)
+        or "Sem defesa possível."
+    )
 
     total_slides = 6
 
@@ -551,7 +554,7 @@ def main():
     for i, cena in enumerate(cenas):
         n = i + 2
         print(f"  Slide {n}/6 — Cena {i + 1}")
-        img = slide_cena(cena["texto"], i + 1, n, total_slides)
+        img = slide_cena(cena.get("texto_slide") or cena["texto"], i + 1, n, total_slides)
         p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
         img.save(str(p))
         slides.append(p)

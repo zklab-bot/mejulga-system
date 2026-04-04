@@ -39,6 +39,7 @@ def _gerar_resposta(texto: str) -> str:
         f'Um seguidor comentou no seu post: "{texto}"\n\n'
         "Responda de forma curta (máximo 2 frases, até 150 caracteres). "
         "Seja engraçada e acolhedora. Máximo 2 emojis. "
+        "Se mencionar um local (consultório, clínica, etc), use SEMPRE 'Tribunal Me Julga'. "
         "Responda APENAS com o texto da resposta.",
         max_tokens=150,
     )
