@@ -2,11 +2,11 @@ name: Daily Posts — Dra. Julga
 
 on:
   schedule:
-    - cron: '0 12 * * *'   # 09h BRT
-    - cron: '0 15 * * *'   # 12h BRT
-    - cron: '0 18 * * *'   # 15h BRT
-    - cron: '0 21 * * *'   # 18h BRT
-    - cron: '0 0  * * *'   # 21h BRT
+    - cron: '0 12 * * *'   # 09h BRT — manhã
+    - cron: '0 15 * * *'   # 12h BRT — almoço (pico)
+    - cron: '0 21 * * *'   # 18h BRT — saída do trabalho
+    - cron: '0 23 * * *'   # 20h BRT — após jantar (prime time)
+    - cron: '0 1  * * *'   # 22h BRT — scroll pré-sono
   workflow_dispatch:
     inputs:
       categoria:
@@ -45,9 +45,9 @@ jobs:
       #  UTC  BRT  Slot  Segunda  Terça   Quarta   Quinta  Sexta   Sábado  Domingo
       #  12h  09h   A    dinheiro  amor   trabalho dopamina vidaad  social  saude
       #  15h  12h   B    amor    trabalho dopamina  vidaad  social  saude   dinheiro
-      #  18h  15h   C    trabalho dopamina vidaad   social  saude  dinheiro  amor
-      #  21h  18h   D    dopamina  vidaad  social   saude  dinheiro  amor  trabalho
-      #  00h  21h   E    vidaad   social   saude   dinheiro  amor  trabalho dopamina
+      #  21h  18h   C    trabalho dopamina vidaad   social  saude  dinheiro  amor
+      #  23h  20h   D    dopamina  vidaad  social   saude  dinheiro  amor  trabalho
+      #  01h  22h   E    vidaad   social   saude   dinheiro  amor  trabalho dopamina
       #
       - name: Definir categoria
         id: categoria
@@ -71,8 +71,8 @@ jobs:
 
           if   [ "$HORA" = "12" ]; then CATEGORIA="${SLOT_A[$IDX]}"
           elif [ "$HORA" = "15" ]; then CATEGORIA="${SLOT_B[$IDX]}"
-          elif [ "$HORA" = "18" ]; then CATEGORIA="${SLOT_C[$IDX]}"
-          elif [ "$HORA" = "21" ]; then CATEGORIA="${SLOT_D[$IDX]}"
+          elif [ "$HORA" = "21" ]; then CATEGORIA="${SLOT_C[$IDX]}"
+          elif [ "$HORA" = "23" ]; then CATEGORIA="${SLOT_D[$IDX]}"
           else                          CATEGORIA="${SLOT_E[$IDX]}"
           fi
 

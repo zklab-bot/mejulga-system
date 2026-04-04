@@ -154,14 +154,22 @@ def criar_carrossel(container_ids: list, caption: str) -> str:
 
 
 def publicar_carrossel(carrossel_id: str) -> str:
-    """Publica o carrossel. Retorna media_id."""
+    """Publica o carrossel. Retorna media_id.
+
+    A Meta pode retornar status HTTP 4xx mas ainda incluir o 'id' no corpo
+    quando a publicação foi processada com sucesso internamente.
+    Por isso verificamos o body antes de chamar raise_for_status.
+    """
     resp = requests.post(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media_publish",
         params={"access_token": META_ACCESS_TOKEN},
         data={"creation_id": carrossel_id}
     )
+    data = resp.json()
+    if "id" in data:
+        return data["id"]
     resp.raise_for_status()
-    return resp.json()["id"]
+    raise RuntimeError(f"media_publish sem id na resposta: {data}")
 
 
 def localizar_slides(categoria: str, hoje: str) -> list:
