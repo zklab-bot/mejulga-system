@@ -4,6 +4,7 @@ from fastapi.responses import PlainTextResponse
 from dotenv import load_dotenv
 from webhook.signature import verify_signature
 from webhook import handlers
+from webhook import telegram_handler
 
 load_dotenv()
 
@@ -11,6 +12,7 @@ app = FastAPI()
 
 VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "")
 APP_SECRET = os.getenv("META_APP_SECRET", "")
+TELEGRAM_SECRET = os.getenv("TELEGRAM_SECRET", "")
 
 
 @app.get("/webhook")
@@ -52,3 +54,19 @@ async def receive(request: Request):
                 handlers.handle_comment(value)
 
     return {"status": "ok"}
+
+
+@app.post("/telegram")
+async def telegram(request: Request):
+    telegram_secret = os.getenv("TELEGRAM_SECRET", "")
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not telegram_secret or secret != telegram_secret:
+        return Response(status_code=403)
+
+    try:
+        update = await request.json()
+    except Exception:
+        return {"ok": True}
+
+    telegram_handler.handle(update)
+    return {"ok": True}
