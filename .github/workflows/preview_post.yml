@@ -1,0 +1,51 @@
+name: Preview Post — Dra. Julga
+
+on:
+  workflow_dispatch:
+    inputs:
+      categoria:
+        description: 'Categoria do preview'
+        required: false
+        default: 'amor'
+
+permissions:
+  contents: write
+
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: pip install pillow anthropic python-dotenv requests
+
+      - name: Gerar roteiro (sem áudio)
+        run: cd content-engine && python generate_reels.py --categoria ${{ github.event.inputs.categoria }} --sem_audio
+
+      - name: Gerar slides do carrossel
+        run: cd content-engine && python gerar_carrossel.py --categoria ${{ github.event.inputs.categoria }}
+
+      - name: Notificar preview gerado
+        run: |
+          cd content-engine
+          python -m notify send "👁️ Preview *${{ github.event.inputs.categoria }}* gerado — confira generated/reels/ no repositório."
+
+      - name: Commit dos slides de preview
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "preview: ${{ github.event.inputs.categoria }} [skip ci]"
+          file_pattern: |
+            content-engine/generated/reels/
