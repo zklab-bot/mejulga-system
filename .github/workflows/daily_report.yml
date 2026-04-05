@@ -1,0 +1,34 @@
+name: Relatório Diário — Dra. Julga
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 22h BRT
+  workflow_dispatch:
+
+env:
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  relatorio:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: pip install python-dotenv requests
+
+      - name: Enviar relatório diário
+        run: |
+          STATE="content-engine/generated/engagement_state.json"
+          if [ ! -f "$STATE" ]; then
+            echo "engagement_state.json não encontrado — pulando relatório"
+            exit 0
+          fi
+          cd content-engine
+          python -m notify send_daily_report --state-file "generated/engagement_state.json"
