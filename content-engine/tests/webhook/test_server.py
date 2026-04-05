@@ -96,3 +96,36 @@ def test_post_webhook_chama_handle_comment():
     assert resp.status_code == 200
     mock_comment.assert_called_once()
     mock_dm.assert_not_called()
+
+
+def test_telegram_sem_secret_retorna_403():
+    os.environ["TELEGRAM_SECRET"] = "meu_secret"
+    client = get_client()
+    resp = client.post("/telegram", json={"message": {"chat": {"id": 1}, "text": "/help"}})
+    assert resp.status_code == 403
+
+
+def test_telegram_secret_errado_retorna_403():
+    os.environ["TELEGRAM_SECRET"] = "meu_secret"
+    client = get_client()
+    resp = client.post(
+        "/telegram",
+        json={"message": {"chat": {"id": 1}, "text": "/help"}},
+        headers={"X-Telegram-Bot-Api-Secret-Token": "errado"},
+    )
+    assert resp.status_code == 403
+
+
+def test_telegram_secret_correto_retorna_ok():
+    os.environ["TELEGRAM_SECRET"] = "meu_secret"
+    os.environ["TELEGRAM_CHAT_ID"] = "999"
+    client = get_client()
+    with patch("webhook.telegram_handler.handle") as mock_handle:
+        resp = client.post(
+            "/telegram",
+            json={"message": {"chat": {"id": 999}, "text": "/help"}},
+            headers={"X-Telegram-Bot-Api-Secret-Token": "meu_secret"},
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+    mock_handle.assert_called_once()
