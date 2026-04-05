@@ -63,3 +63,11 @@ def test_send_daily_report_formata_estado(monkeypatch):
     msg = mock_send.call_args[0][0]
     assert "amor" in msg
     assert "trabalho" in msg
+
+
+def test_send_voting_comment_formata_mensagem(monkeypatch):
+    _mock_env(monkeypatch)
+    with patch("notify.send") as mock_send:
+        notify.send_voting_comment("987654")
+    msg = mock_send.call_args[0][0]
+    assert "987654" in msg
