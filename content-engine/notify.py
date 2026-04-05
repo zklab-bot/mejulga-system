@@ -109,9 +109,14 @@ def _main():
     p_rep = sub.add_parser("send_daily_report")
     p_rep.add_argument("--state-file", required=True)
 
+    p_send = sub.add_parser("send")
+    p_send.add_argument("text")
+
     args = parser.parse_args()
 
-    if args.cmd == "send_post_published":
+    if args.cmd == "send":
+        send(args.text)
+    elif args.cmd == "send_post_published":
         send_post_published(args.categoria, args.titulo, args.hora, args.media_id)
     elif args.cmd == "send_post_failed":
         send_post_failed(args.categoria, args.hora, args.erro)
