@@ -1,12 +1,12 @@
-name: Daily Posts — Dra. Julga
+name: Daily Posts - Dra. Julga
 
 on:
   schedule:
-    - cron: '0 12 * * *'   # 09h BRT — manhã
-    - cron: '0 15 * * *'   # 12h BRT — almoço (pico)
-    - cron: '0 21 * * *'   # 18h BRT — saída do trabalho
-    - cron: '0 23 * * *'   # 20h BRT — após jantar (prime time)
-    - cron: '0 1  * * *'   # 22h BRT — scroll pré-sono
+    - cron: '0 12 * * *'   # 09h BRT - manha
+    - cron: '0 15 * * *'   # 12h BRT - almoco (pico)
+    - cron: '0 21 * * *'   # 18h BRT - saida do trabalho
+    - cron: '0 23 * * *'   # 20h BRT - apos jantar (prime time)
+    - cron: '0 1  * * *'   # 22h BRT - scroll pre-sono
   workflow_dispatch:
     inputs:
       categoria:
@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: pip install pillow anthropic python-dotenv requests
 
       - name: Definir categoria
@@ -81,17 +81,10 @@ jobs:
             exit 0
           fi
 
-          JA_PUBLICADO=$(python3 << PYEOF
-import json
-state_file = 'content-engine/generated/engagement_state.json'
-with open(state_file) as f:
-    state = json.load(f)
-print('true' if '${CHAVE}' in state.get('posts_published', []) else 'false')
-PYEOF
-)
+          JA_PUBLICADO=$(CHAVE="$CHAVE" python3 -c "import json,os; s=json.load(open('content-engine/generated/engagement_state.json')); print('true' if os.environ['CHAVE'] in s.get('posts_published',[]) else 'false')")
           echo "skip=$JA_PUBLICADO" >> $GITHUB_OUTPUT
           if [ "$JA_PUBLICADO" = "true" ]; then
-            echo "⏭️  Post '$CHAVE' já publicado hoje — pulando."
+            echo "Post '$CHAVE' ja publicado hoje - pulando."
           fi
 
       - name: Notificar post pulado
@@ -120,69 +113,36 @@ PYEOF
           echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
           echo "hora=$HORA" >> $GITHUB_OUTPUT
 
-      - name: Notificar falha na publicação
+      - name: Notificar falha na publicacao
         if: steps.dedup.outputs.skip != 'true' && failure() && steps.publicar.outcome == 'failure'
         run: |
           cd content-engine
-          python3 << PYEOF
-import sys
-sys.path.insert(0, '.')
-from engagement.shared import state
-state.log_error('post_carrossel', 'Falha no step de publicacao')
-PYEOF
+          python3 -c "import sys; sys.path.insert(0,'.'); from engagement.shared import state; state.log_error('post_carrossel','Falha no step de publicacao')"
           HORA=$(date -u +"%Hh%M")
           python -m notify send_post_failed \
             --categoria ${{ steps.categoria.outputs.categoria }} \
             --hora "${HORA}" \
-            --erro "Falha ao publicar carrossel — verifique GitHub Actions"
+            --erro "Falha ao publicar carrossel - verifique GitHub Actions"
 
       - name: Registrar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           HOJE=$(date -u +"%Y-%m-%d")
           CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
-          python3 << PYEOF
-import json
-state_file = 'content-engine/generated/engagement_state.json'
-try:
-    with open(state_file) as f:
-        state = json.load(f)
-except Exception:
-    state = {}
-published = state.setdefault('posts_published', [])
-if '${CHAVE}' not in published:
-    published.append('${CHAVE}')
-with open(state_file, 'w') as f:
-    json.dump(state, f, ensure_ascii=False, indent=2)
-print('Registrado: ${CHAVE}')
-PYEOF
+          CHAVE="$CHAVE" python3 -c "import json,os; f='content-engine/generated/engagement_state.json'; d=json.load(open(f)); p=d.setdefault('posts_published',[]); c=os.environ['CHAVE']; c not in p and p.append(c); json.dump(d,open(f,'w'),ensure_ascii=False,indent=2); print('Registrado:',c)"
 
       - name: Notificar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           cd content-engine
-          TITULO=$(python3 << PYEOF
-import json, glob
-from datetime import datetime
-hoje = datetime.utcnow().strftime('%Y-%m-%d')
-cat = '${{ steps.categoria.outputs.categoria }}'
-pattern = 'generated/reels/' + hoje + '_' + cat + '_reels.json'
-files = glob.glob(pattern)
-if files:
-    with open(files[0]) as f:
-        d = json.load(f)
-    print(d.get('titulo', cat))
-else:
-    print(cat)
-PYEOF
-)
+          TITULO=$(CAT="${{ steps.categoria.outputs.categoria }}" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
           python -m notify send_post_published \
             --categoria ${{ steps.categoria.outputs.categoria }} \
             --titulo "$TITULO" \
             --hora "${{ steps.publicar.outputs.hora }}" \
             --media_id ${{ steps.publicar.outputs.media_id }}
 
-      - name: Postar comentário de engajamento
+      - name: Postar comentario de engajamento
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           cd content-engine
@@ -190,7 +150,7 @@ PYEOF
             --media_id ${{ steps.publicar.outputs.media_id }} \
             --categoria ${{ steps.categoria.outputs.categoria }}
 
-      - name: Notificar comentário de votação
+      - name: Notificar comentario de votacao
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           cd content-engine
