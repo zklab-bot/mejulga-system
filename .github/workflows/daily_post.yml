@@ -14,7 +14,6 @@ on:
         required: false
         default: ''
 
-# Garante que apenas uma instância rode por vez — nunca em paralelo
 concurrency:
   group: daily-post
   cancel-in-progress: false
@@ -23,6 +22,8 @@ env:
   META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
   IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
 jobs:
   publicar:
@@ -38,17 +39,6 @@ jobs:
       - name: Instalar dependências
         run: pip install pillow anthropic python-dotenv requests
 
-      # ── Cada slot horário usa uma rotação diferente das 7 categorias.
-      # Assim, no mesmo dia, os 5 slots sempre produzem categorias distintas.
-      # Rotação por dia da semana (1=seg … 7=dom), índice = (DIA-1) % 7
-      #
-      #  UTC  BRT  Slot  Segunda  Terça   Quarta   Quinta  Sexta   Sábado  Domingo
-      #  12h  09h   A    dinheiro  amor   trabalho dopamina vidaad  social  saude
-      #  15h  12h   B    amor    trabalho dopamina  vidaad  social  saude   dinheiro
-      #  21h  18h   C    trabalho dopamina vidaad   social  saude  dinheiro  amor
-      #  23h  20h   D    dopamina  vidaad  social   saude  dinheiro  amor  trabalho
-      #  01h  22h   E    vidaad   social   saude   dinheiro  amor  trabalho dopamina
-      #
       - name: Definir categoria
         id: categoria
         run: |
@@ -79,8 +69,6 @@ jobs:
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
           echo "Categoria (slot ${HORA}h UTC): $CATEGORIA"
 
-      # ── Verificação de duplicata ─────────────────────────────────────────
-      # Chave: {data_utc}_{categoria} — salva em engagement_state.json
       - name: Verificar duplicata
         id: dedup
         run: |
@@ -105,6 +93,12 @@ print('true' if '${CHAVE}' in state.get('posts_published', []) else 'false')
             echo "⏭️  Post '$CHAVE' já publicado hoje — pulando."
           fi
 
+      - name: Notificar post pulado
+        if: steps.dedup.outputs.skip == 'true'
+        run: |
+          cd content-engine
+          python -m notify send_post_skipped --categoria ${{ steps.categoria.outputs.categoria }}
+
       - name: Gerar roteiro
         if: steps.dedup.outputs.skip != 'true'
         run: cd content-engine && python generate_reels.py --categoria ${{ steps.categoria.outputs.categoria }} --sem_audio
@@ -118,32 +112,73 @@ print('true' if '${CHAVE}' in state.get('posts_published', []) else 'false')
         id: publicar
         run: |
           cd content-engine
+          HORA=$(date -u +"%Hh%M")
           MEDIA_ID=$(python post_carrossel_instagram.py \
             --categoria ${{ steps.categoria.outputs.categoria }} \
             --output-id)
           echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
+          echo "hora=$HORA" >> $GITHUB_OUTPUT
 
-      # ── Registra no estado imediatamente após publicar ───────────────────
+      - name: Notificar falha na publicação
+        if: steps.dedup.outputs.skip != 'true' && failure() && steps.publicar.outcome == 'failure'
+        run: |
+          cd content-engine
+          python3 -c "
+import sys
+sys.path.insert(0, '.')
+from engagement.shared import state
+state.log_error('post_carrossel', 'Falha no step de publicação')
+"
+          HORA=$(date -u +"%Hh%M")
+          python -m notify send_post_failed \
+            --categoria ${{ steps.categoria.outputs.categoria }} \
+            --hora "${HORA}" \
+            --erro "Falha ao publicar carrossel — verifique GitHub Actions"
+
       - name: Registrar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           HOJE=$(date -u +"%Y-%m-%d")
           CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
-          python3 - <<PYEOF
+          python3 -c "
 import json
-state_file = "content-engine/generated/engagement_state.json"
+state_file = 'content-engine/generated/engagement_state.json'
 try:
     with open(state_file) as f:
         state = json.load(f)
 except Exception:
     state = {}
-published = state.setdefault("posts_published", [])
-if "$CHAVE" not in published:
-    published.append("$CHAVE")
-with open(state_file, "w") as f:
+published = state.setdefault('posts_published', [])
+if '${CHAVE}' not in published:
+    published.append('${CHAVE}')
+with open(state_file, 'w') as f:
     json.dump(state, f, ensure_ascii=False, indent=2)
-print("Registrado: $CHAVE")
-PYEOF
+print('Registrado: ${CHAVE}')
+"
+
+      - name: Notificar post publicado
+        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
+        run: |
+          cd content-engine
+          TITULO=$(python3 -c "
+import json, glob, os
+from datetime import datetime
+hoje = datetime.utcnow().strftime('%Y-%m-%d')
+cat = '${{ steps.categoria.outputs.categoria }}'
+pattern = f'generated/reels/{hoje}_{cat}_reels.json'
+files = glob.glob(pattern)
+if files:
+    with open(files[0]) as f:
+        d = json.load(f)
+    print(d.get('titulo', cat))
+else:
+    print(cat)
+")
+          python -m notify send_post_published \
+            --categoria ${{ steps.categoria.outputs.categoria }} \
+            --titulo "$TITULO" \
+            --hora "${{ steps.publicar.outputs.hora }}" \
+            --media_id ${{ steps.publicar.outputs.media_id }}
 
       - name: Postar comentário de engajamento
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
@@ -152,6 +187,12 @@ PYEOF
           python -m engagement.post_engagement \
             --media_id ${{ steps.publicar.outputs.media_id }} \
             --categoria ${{ steps.categoria.outputs.categoria }}
+
+      - name: Notificar comentário de votação
+        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
+        run: |
+          cd content-engine
+          python -m notify send_voting_comment --media_id ${{ steps.publicar.outputs.media_id }}
 
       - name: Commit do estado e slides gerados
         if: steps.dedup.outputs.skip != 'true'
