@@ -93,18 +93,13 @@ jobs:
             exit 0
           fi
 
-          JA_PUBLICADO=$(python3 - <<'PYEOF'
-import json, sys
-state_file = "content-engine/generated/engagement_state.json"
+          JA_PUBLICADO=$(python3 -c "
+import json
+state_file = 'content-engine/generated/engagement_state.json'
 with open(state_file) as f:
     state = json.load(f)
-chave = "$CHAVE"
-if chave in state.get("posts_published", []):
-    print("true")
-else:
-    print("false")
-PYEOF
-)
+print('true' if '${CHAVE}' in state.get('posts_published', []) else 'false')
+")
           echo "skip=$JA_PUBLICADO" >> $GITHUB_OUTPUT
           if [ "$JA_PUBLICADO" = "true" ]; then
             echo "⏭️  Post '$CHAVE' já publicado hoje — pulando."
