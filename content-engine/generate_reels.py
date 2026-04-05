@@ -108,7 +108,7 @@ Responda SOMENTE com este JSON:
 
     resposta = claude_client.messages.create(
         model="claude-sonnet-4-5",
-        max_tokens=1000,
+        max_tokens=2000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}]
     )

@@ -1,14 +1,8 @@
 name: Gerar Posts Dra. Julga
 
+# DESATIVADO — substituído por daily_post.yml que gera + posta carrosséis
+# Mantido apenas para workflow_dispatch manual se necessário
 on:
-  schedule:
-    # Horários em UTC (Brasil = UTC-3)
-    # 12h BRT = 15h UTC
-    - cron: '0 15 * * *'
-    # 18h BRT = 21h UTC
-    - cron: '0 21 * * *'
-    # 21h BRT = 00h UTC (dia seguinte)
-    - cron: '0 0 * * *'
   workflow_dispatch:
 
 # Permissão para o workflow fazer push no repositório
