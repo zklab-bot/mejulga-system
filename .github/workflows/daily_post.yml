@@ -81,13 +81,14 @@ jobs:
             exit 0
           fi
 
-          JA_PUBLICADO=$(python3 -c "
+          JA_PUBLICADO=$(python3 << PYEOF
 import json
 state_file = 'content-engine/generated/engagement_state.json'
 with open(state_file) as f:
     state = json.load(f)
 print('true' if '${CHAVE}' in state.get('posts_published', []) else 'false')
-")
+PYEOF
+)
           echo "skip=$JA_PUBLICADO" >> $GITHUB_OUTPUT
           if [ "$JA_PUBLICADO" = "true" ]; then
             echo "⏭️  Post '$CHAVE' já publicado hoje — pulando."
@@ -123,12 +124,12 @@ print('true' if '${CHAVE}' in state.get('posts_published', []) else 'false')
         if: steps.dedup.outputs.skip != 'true' && failure() && steps.publicar.outcome == 'failure'
         run: |
           cd content-engine
-          python3 -c "
+          python3 << PYEOF
 import sys
 sys.path.insert(0, '.')
 from engagement.shared import state
-state.log_error('post_carrossel', 'Falha no step de publicação')
-"
+state.log_error('post_carrossel', 'Falha no step de publicacao')
+PYEOF
           HORA=$(date -u +"%Hh%M")
           python -m notify send_post_failed \
             --categoria ${{ steps.categoria.outputs.categoria }} \
@@ -140,7 +141,7 @@ state.log_error('post_carrossel', 'Falha no step de publicação')
         run: |
           HOJE=$(date -u +"%Y-%m-%d")
           CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
-          python3 -c "
+          python3 << PYEOF
 import json
 state_file = 'content-engine/generated/engagement_state.json'
 try:
@@ -154,18 +155,18 @@ if '${CHAVE}' not in published:
 with open(state_file, 'w') as f:
     json.dump(state, f, ensure_ascii=False, indent=2)
 print('Registrado: ${CHAVE}')
-"
+PYEOF
 
       - name: Notificar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           cd content-engine
-          TITULO=$(python3 -c "
-import json, glob, os
+          TITULO=$(python3 << PYEOF
+import json, glob
 from datetime import datetime
 hoje = datetime.utcnow().strftime('%Y-%m-%d')
 cat = '${{ steps.categoria.outputs.categoria }}'
-pattern = f'generated/reels/{hoje}_{cat}_reels.json'
+pattern = 'generated/reels/' + hoje + '_' + cat + '_reels.json'
 files = glob.glob(pattern)
 if files:
     with open(files[0]) as f:
@@ -173,7 +174,8 @@ if files:
     print(d.get('titulo', cat))
 else:
     print(cat)
-")
+PYEOF
+)
           python -m notify send_post_published \
             --categoria ${{ steps.categoria.outputs.categoria }} \
             --titulo "$TITULO" \
