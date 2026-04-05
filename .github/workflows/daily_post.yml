@@ -129,7 +129,7 @@ jobs:
         run: |
           HOJE=$(date -u +"%Y-%m-%d")
           CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
-          CHAVE="$CHAVE" python3 -c "import json,os; f='content-engine/generated/engagement_state.json'; d=json.load(open(f)); p=d.setdefault('posts_published',[]); c=os.environ['CHAVE']; c not in p and p.append(c); json.dump(d,open(f,'w'),ensure_ascii=False,indent=2); print('Registrado:',c)"
+          CHAVE="$CHAVE" python3 -c "import json,os; f='content-engine/generated/engagement_state.json'; d=json.load(open(f)) if os.path.exists(f) else {}; p=d.setdefault('posts_published',[]); c=os.environ['CHAVE']; c not in p and p.append(c); os.makedirs(os.path.dirname(f),exist_ok=True); json.dump(d,open(f,'w'),ensure_ascii=False,indent=2); print('Registrado:',c)"
 
       - name: Notificar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
