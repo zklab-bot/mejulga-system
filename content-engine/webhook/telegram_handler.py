@@ -18,7 +18,7 @@ load_dotenv()
 _TOKEN = lambda: os.getenv("TELEGRAM_BOT_TOKEN", "")
 _OWNER_CHAT_ID = lambda: int(os.getenv("TELEGRAM_CHAT_ID", "0"))
 _PAT = lambda: os.getenv("GITHUB_PAT", "")
-_REPO = lambda: os.getenv("GITHUB_REPO", "owner/mejulga-system")
+_REPO = lambda: os.getenv("GITHUB_SYSTEM_REPO", "zklab-bot/mejulga-system")
 
 # Slots em UTC
 _CRON_SLOTS_UTC = [12, 15, 21, 23, 1]
