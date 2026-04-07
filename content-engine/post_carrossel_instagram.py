@@ -124,9 +124,25 @@ def aguardar_container_pronto(container_id: str, max_tentativas: int = 20, inter
     raise TimeoutError(f"Container {container_id} não ficou FINISHED após {max_tentativas} tentativas")
 
 
+_RETRY_STATUS = {500, 502, 503, 504}
+
+
+def _post_com_retry(url: str, max_tentativas: int = 3, **kwargs) -> requests.Response:
+    """requests.post com retry automático em erros 5xx da Meta."""
+    for tentativa in range(1, max_tentativas + 1):
+        resp = requests.post(url, **kwargs)
+        if resp.status_code not in _RETRY_STATUS:
+            return resp
+        espera = 2 ** tentativa  # 2s, 4s, 8s
+        print(f"  ⚠️  Meta API {resp.status_code} — tentativa {tentativa}/{max_tentativas}, aguardando {espera}s...")
+        if tentativa < max_tentativas:
+            time.sleep(espera)
+    return resp
+
+
 def criar_container_imagem(image_url: str) -> str:
     """Cria container de imagem para carrossel. Retorna container_id."""
-    resp = requests.post(
+    resp = _post_com_retry(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media",
         params={"access_token": META_ACCESS_TOKEN},
         data={
@@ -140,7 +156,7 @@ def criar_container_imagem(image_url: str) -> str:
 
 def criar_carrossel(container_ids: list, caption: str) -> str:
     """Cria container do carrossel com todos os slides. Retorna carrossel_id."""
-    resp = requests.post(
+    resp = _post_com_retry(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media",
         params={"access_token": META_ACCESS_TOKEN},
         data={
@@ -160,7 +176,7 @@ def publicar_carrossel(carrossel_id: str) -> str:
     quando a publicação foi processada com sucesso internamente.
     Por isso verificamos o body antes de chamar raise_for_status.
     """
-    resp = requests.post(
+    resp = _post_com_retry(
         f"https://graph.facebook.com/v19.0/{IG_ACCOUNT_ID}/media_publish",
         params={"access_token": META_ACCESS_TOKEN},
         data={"creation_id": carrossel_id}
