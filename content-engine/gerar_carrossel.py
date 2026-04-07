@@ -50,11 +50,10 @@ INTRO_TEXTOS = {
 }
 
 LABELS_EVIDENCIA = [
-    "PROVA Nº {}",
-    "AUTO DE ACUSAÇÃO Nº {}",
-    "FLAGRANTE Nº {}",
-    "REGISTRO DE OCORRÊNCIA Nº {}",
-    "DEPOIMENTO Nº {}",
+    "A ACUSAÇÃO",
+    "A PROVA",
+    "O FLAGRANTE",
+    "O AGRAVANTE",
 ]
 
 VEREDICTO_CTA_L1 = "Esse foi o julgamento dos outros."
@@ -344,8 +343,7 @@ def slide_cena(texto: str, numero_cena: int, numero_slide: int, total: int) -> I
               fill=CINZA_MEDIO, anchor="mt")
 
     # Badge label — pill com borda roxa sobre branco
-    label_tmpl = LABELS_EVIDENCIA[(numero_cena - 1) % len(LABELS_EVIDENCIA)]
-    label      = label_tmpl.format(numero_cena)
+    label = LABELS_EVIDENCIA[(numero_cena - 1) % len(LABELS_EVIDENCIA)]
     fonte_lbl  = encontrar_fonte(30, bold=True)
     lbl_bbox   = draw.textbbox((0, 0), label, font=fonte_lbl)
     lbl_w      = lbl_bbox[2] - lbl_bbox[0]
