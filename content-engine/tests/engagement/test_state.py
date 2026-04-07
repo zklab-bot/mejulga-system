@@ -10,6 +10,7 @@ def test_load_retorna_default_quando_arquivo_nao_existe(tmp_path, monkeypatch):
     assert result["dms_replied"] == []
     assert result["following"] == {}
     assert result["hashtag_report"] == {}
+    assert result["post_details"] == {}
 
 
 def test_save_e_load_roundtrip(tmp_path, monkeypatch):
@@ -21,6 +22,7 @@ def test_save_e_load_roundtrip(tmp_path, monkeypatch):
         "dms_replied": ["dm1"],
         "following": {"user1": "2026-04-01T10:00:00"},
         "hashtag_report": {"ranking": []},
+        "post_details": {},
     }
     state.save(data)
     result = state.load()
