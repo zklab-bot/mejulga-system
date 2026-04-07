@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 
 import requests
 from dotenv import load_dotenv
+from engagement import feedback
 
 load_dotenv()
 
@@ -42,6 +43,11 @@ HELP_TEXT = (
 
 def handle(update: dict) -> None:
     """Entry point — chamado pelo endpoint /telegram."""
+    callback = update.get("callback_query", {})
+    if callback:
+        _handle_callback(callback)
+        return
+
     msg = update.get("message", {})
     chat_id = msg.get("chat", {}).get("id")
     text = (msg.get("text") or "").strip()
@@ -75,6 +81,58 @@ def handle(update: dict) -> None:
         _cmd_erros(chat_id)
     else:
         _reply(chat_id, f"Comando não reconhecido: `{cmd}`\nUse /help para ver os comandos.")
+
+
+def _handle_callback(callback: dict) -> None:
+    """Processa callback_query de botões inline (ex: votação de rating)."""
+    data = callback.get("data", "")
+    callback_id = callback.get("id", "")
+    message = callback.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+    message_id = message.get("message_id")
+
+    if chat_id != _OWNER_CHAT_ID():
+        return
+
+    if not data.startswith("rate:"):
+        return
+
+    parts = data.split(":")
+    if len(parts) != 3:
+        return
+
+    _, chave, nota_str = parts
+    try:
+        nota = int(nota_str)
+    except ValueError:
+        return
+
+    if nota < 1 or nota > 5:
+        return
+
+    feedback.store_rating(chave, nota)
+
+    state = _fetch_state()
+    post = state.get("post_details", {}).get(chave, {})
+    titulo = post.get("titulo", chave)
+
+    estrelas = "⭐" * nota
+    texto_confirmacao = f'✅ Nota registrada: {estrelas} para "{titulo}"'
+
+    token = _TOKEN()
+    if not token:
+        return
+
+    requests.post(
+        f"https://api.telegram.org/bot{token}/answerCallbackQuery",
+        json={"callback_query_id": callback_id},
+        timeout=10,
+    )
+    requests.post(
+        f"https://api.telegram.org/bot{token}/editMessageText",
+        json={"chat_id": chat_id, "message_id": message_id, "text": texto_confirmacao},
+        timeout=10,
+    )
 
 
 # ── Comandos ──────────────────────────────────────────────────────────────────

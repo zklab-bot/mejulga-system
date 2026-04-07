@@ -89,3 +89,75 @@ def test_forcar_post_com_categoria(monkeypatch):
         th.handle(_make_update("/forcar_post amor"))
     _, kwargs = mock_disp.call_args
     assert kwargs.get("inputs", {}).get("categoria") == "amor"
+
+
+def _make_callback(chave: str, nota: int, chat_id: int = 999, message_id: int = 42) -> dict:
+    return {
+        "callback_query": {
+            "id": "cq_id_123",
+            "data": f"rate:{chave}:{nota}",
+            "message": {
+                "message_id": message_id,
+                "chat": {"id": chat_id},
+            },
+        }
+    }
+
+
+def test_callback_query_chama_store_rating(monkeypatch):
+    _mock_env(monkeypatch)
+    with patch("webhook.telegram_handler.feedback") as mock_fb, \
+         patch("requests.post"):
+        th.handle(_make_callback("2026-04-07_amor", 4))
+    mock_fb.store_rating.assert_called_once_with("2026-04-07_amor", 4)
+
+
+def test_callback_query_edita_mensagem(monkeypatch):
+    _mock_env(monkeypatch)
+    state = {"post_details": {"2026-04-07_amor": {"titulo": "O Sumido", "nota": None}}}
+    with patch("webhook.telegram_handler.feedback"), \
+         patch("webhook.telegram_handler._fetch_state", return_value=state), \
+         patch("requests.post") as mock_post:
+        th.handle(_make_callback("2026-04-07_amor", 4))
+
+    calls = [str(c) for c in mock_post.call_args_list]
+    assert any("editMessageText" in c for c in calls)
+    assert any("answerCallbackQuery" in c for c in calls)
+
+
+def test_callback_query_mensagem_contem_estrelas(monkeypatch):
+    _mock_env(monkeypatch)
+    state = {"post_details": {"2026-04-07_amor": {"titulo": "O Sumido", "nota": None}}}
+    with patch("webhook.telegram_handler.feedback"), \
+         patch("webhook.telegram_handler._fetch_state", return_value=state), \
+         patch("requests.post") as mock_post:
+        th.handle(_make_callback("2026-04-07_amor", 3))
+
+    edit_call = next(
+        c for c in mock_post.call_args_list
+        if "editMessageText" in str(c)
+    )
+    texto = edit_call[1]["json"]["text"]
+    assert "⭐⭐⭐" in texto
+    assert "O Sumido" in texto
+
+
+def test_callback_query_chat_id_errado_ignorado(monkeypatch):
+    _mock_env(monkeypatch)
+    with patch("webhook.telegram_handler.feedback") as mock_fb:
+        th.handle(_make_callback("2026-04-07_amor", 4, chat_id=888))
+    mock_fb.store_rating.assert_not_called()
+
+
+def test_callback_query_formato_invalido_ignorado(monkeypatch):
+    _mock_env(monkeypatch)
+    with patch("webhook.telegram_handler.feedback") as mock_fb, \
+         patch("requests.post"):
+        th.handle({
+            "callback_query": {
+                "id": "x",
+                "data": "nao_e_rate",
+                "message": {"message_id": 1, "chat": {"id": 999}},
+            }
+        })
+    mock_fb.store_rating.assert_not_called()
