@@ -163,12 +163,13 @@ Cena 3 deve ser mais específica e absurda que Cena 2.
 Cena 4 deve contradizer diretamente a desculpa implícita da Cena 2 com prova pior.
 Cena 5 deve ser mais curta que Cena 4.
 
-REGRA ANTI-REDUNDÂNCIA — obrigatório:
-texto_slide NÃO é o texto narrado com quebras de linha. É um ângulo diferente do mesmo momento.
-O texto narra. O slide acusa com os fatos-prova, sem verbos de ligação.
-❌ texto: "Quarta, 14h37, câmera desligada na reunião" → slide: "14h37\nCâmera desligada"
-✅ texto: "Quarta, 14h37. Câmera desligada. Você estava no quarto vídeo do feed."
-   slide: "Reunião do Teams.\nQuarto vídeo do Instagram."
+REGRA DO SLIDE AUTOEXPLICATIVO — obrigatório:
+texto_slide deve funcionar como acusação completa lida sem áudio. É uma ou duas frases na voz da Dra. Julga — fria, direta — que carregam o humor sozinhas. O leitor do slide não ouve a narração.
+NÃO é lista de fatos soltos. É uma sentença acusatória fluida que inclui o contexto da acusação.
+❌ slide: "11 vídeos.\n3 comentários em perfis aleatórios." (fragmentos sem contexto — não acusa ninguém)
+✅ slide: "Enquanto a mensagem ficava no vácuo:\n11 vídeos. 3 comentários em estranhos." (acusação completa)
+❌ slide: "47 minutos.\nSlide que ninguém vai ler." (fragmentos)
+✅ slide: "Passou 47 minutos formatando um slide\nque ninguém vai abrir." (sentença fluida)
 
 REGRA DO VEREDICTO PRINTÁVEL — obrigatório:
 Cena 5 deve ter no máximo 20 palavras. É a frase que vai virar print e ser mandada no grupo.
@@ -224,12 +225,12 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
 
     prompt = f"""Crie um roteiro de carrossel para a Dra. Julga sobre a categoria "{info['label']}".
 
-EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala, pode ter conectores) e `texto_slide` (card visual — ângulo DIFERENTE do texto, não um resumo).
+EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala, pode ter conectores) e `texto_slide` (card visual — frase acusatória completa na voz da Dra. Julga; funciona sozinha sem o áudio).
 
 ESTRUTURA OBRIGATÓRIA:
 - Cena 1 — ABERTURA DO PROCESSO: flagrante direto ou "Processo {numero_processo}. Réu: você." Nunca "Gente,". Começa com dado concreto.
 - Cena 2 — INTIMAÇÃO: conduta fria com número, horário ou dado específico.
-- Cena 3 — PRIMEIRA PROVA: detalhe mais absurdo e específico que a Cena 2. Sem conectores no slide.
+- Cena 3 — PRIMEIRA PROVA: detalhe mais absurdo e específico que a Cena 2. O slide é uma sentença acusatória completa — inclui o contexto que torna a prova engraçada.
 - Cena 4 — AGRAVANTE: comportamento que contradiz a desculpa implícita da Cena 2. O texto começa com "Agravante:" ou "Pior:".
 - Cena 5 — VEREDICTO: {instrucao_veredicto}
 - Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
@@ -238,9 +239,9 @@ EXEMPLO CORRETO (categoria: trabalho):
 {{
   "cenas": [
     {{"numero": 1, "texto": "Processo TRA-007/26. Réu: você. Alegação: trabalha demais.", "texto_slide": "Processo TRA-007/26.\\nRéu: você."}},
-    {{"numero": 2, "texto": "Quarta-feira, 14h37. Reunião do Teams. Câmera desligada.", "texto_slide": "Reunião do Teams.\\nQuarto vídeo do Instagram."}},
-    {{"numero": 3, "texto": "Você estava no quarto vídeo do feed falando 'tô aqui' a cada 8 minutos.", "texto_slide": "'Tô aqui, tô aqui.'\\nA cada 8 minutos."}},
-    {{"numero": 4, "texto": "Agravante: passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "47 minutos.\\nSlide que ninguém vai ler."}},
+    {{"numero": 2, "texto": "Quarta-feira, 14h37. Reunião do Teams. Câmera desligada.", "texto_slide": "Na reunião do Teams, câmera desligada.\\nVocê estava no quarto vídeo do Instagram."}},
+    {{"numero": 3, "texto": "Você estava no quarto vídeo do feed falando 'tô aqui' a cada 8 minutos.", "texto_slide": "Enquanto fingia trabalhar,\\ndigitou 'tô aqui' 11 vezes. O feed não perdoou."}},
+    {{"numero": 4, "texto": "Agravante: passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
     {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},
     {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
   ]
@@ -250,6 +251,8 @@ ANTI-EXEMPLO (não faça isso — categoria: dinheiro):
 - ❌ texto cena 1: "Gente, ele parcelou a pizza" (começa com "Gente,")
 - ❌ texto cena 5: "Diagnóstico: síndrome do endividamento crônico" (jargão médico)
 - ❌ texto_slide cena 2 igual ao texto cena 2 com quebra de linha (redundância)
+- ❌ texto_slide cena 3: "R$ 47,90.\nParcelado em 12x." (fragmentos — não acusam ninguém sozinhos)
+- ✅ texto_slide cena 3: "Parcelou R$ 47,90 em 12 vezes.\nO boleto ainda está chegando." (sentença acusatória completa)
 
 Responda SOMENTE com este JSON:
 {{
