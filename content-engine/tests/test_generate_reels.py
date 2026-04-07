@@ -78,7 +78,7 @@ def test_validar_roteiro_rejeita_veredicto_longo():
     # cena 5 com mais de 20 palavras
     r["cenas"][4]["texto"] = (
         "VEREDICTO: Culpado por uma série de comportamentos extremamente duvidosos "
-        "e questionáveis que demonstram total desrespeito pelas outras pessoas. Sem apelação."
+        "e questionáveis que demonstram total falta de respeito pelas outras pessoas. Sem apelação."
     )
     resultado = gr._validar_roteiro(r)
     assert resultado is not None

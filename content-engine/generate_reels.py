@@ -81,7 +81,7 @@ def _validar_roteiro(roteiro: dict) -> str | None:
     cena5 = next((c for c in cenas if c.get("numero") == 5), None)
     if cena5:
         palavras = len((cena5.get("texto") or "").split())
-        if palavras >= 20:
+        if palavras > 20:
             return (
                 f"Veredicto (cena 5) tem {palavras} palavras — máximo é 20. "
                 f"Encurtar para ficar printável."
