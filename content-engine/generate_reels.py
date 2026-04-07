@@ -12,6 +12,7 @@ import requests
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 
@@ -30,6 +31,64 @@ CATEGORIAS_INFO = {
     "social": {"label": "Social", "emoji": "🧍"},
     "saude_mental": {"label": "Saúde Mental", "emoji": "🧘"},
 }
+
+
+def _sorteio_veredicto() -> str:
+    """Sorteia o tipo de veredicto com pesos 60/25/15."""
+    return random.choices(["A", "B", "C"], weights=[60, 25, 15])[0]
+
+
+def _calcular_numero_processo(categoria: str, pasta: Path) -> str:
+    """Gera número de processo sequencial por categoria. Ex: AMO-003/26."""
+    prefixo = categoria[:3].upper()
+    ano = datetime.now().strftime("%y")
+    existentes = list(pasta.glob(f"*_{categoria}_reels.json"))
+    numero = len(existentes) + 1
+    return f"{prefixo}-{numero:03d}/{ano}"
+
+
+def _validar_roteiro(roteiro: dict) -> str | None:
+    """Valida o roteiro gerado. Retorna None se válido, mensagem de erro se inválido."""
+    cenas = roteiro.get("cenas", [])
+
+    for cena in cenas:
+        texto = (cena.get("texto") or "").strip()
+        slide = (cena.get("texto_slide") or "").strip()
+
+        # Rejeita se slide é cópia do texto (normalizado)
+        if texto and slide:
+            texto_norm = " ".join(texto.lower().split())
+            slide_norm = " ".join(slide.lower().replace("\n", " ").split())
+            if texto_norm == slide_norm or slide_norm in texto_norm:
+                return (
+                    f"Cena {cena.get('numero')}: texto_slide redundante — "
+                    f"é cópia ou subconjunto do texto narrado."
+                )
+
+        # Rejeita abertura "Gente,"
+        if texto.lower().startswith("gente,"):
+            return f"Cena {cena.get('numero')}: texto começa com 'Gente,' — proibido."
+
+        # Rejeita jargão médico
+        for palavra in ("diagnóstico", "síndrome", "transtorno"):
+            if palavra in texto.lower() or palavra in slide.lower():
+                return (
+                    f"Cena {cena.get('numero')}: contém '{palavra}' — "
+                    f"usar vocabulário jurídico, não médico."
+                )
+
+    # Veredicto conciso — cena 5
+    cena5 = next((c for c in cenas if c.get("numero") == 5), None)
+    if cena5:
+        palavras = len((cena5.get("texto") or "").split())
+        if palavras >= 20:
+            return (
+                f"Veredicto (cena 5) tem {palavras} palavras — máximo é 20. "
+                f"Encurtar para ficar printável."
+            )
+
+    return None
+
 
 SYSTEM_PROMPT = """Você é a Dra. Julga — psicóloga fictícia sarcástica que diagnostica situações absurdas da vida brasileira com precisão clínica e humor cortante.
 
