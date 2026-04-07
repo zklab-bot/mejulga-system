@@ -12,6 +12,7 @@ DEFAULT_STATE: dict = {
     "following": {},
     "hashtag_report": {},
     "errors": [],
+    "post_details": {},
 }
 
 

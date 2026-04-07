@@ -62,3 +62,10 @@ def test_log_error_estrutura(tmp_path, monkeypatch):
     assert err["context"] == "post_carrossel"
     assert err["message"] == "403 Forbidden"
     assert "timestamp" in err
+
+
+def test_default_state_tem_post_details(tmp_path, monkeypatch):
+    import engagement.shared.state as state
+    monkeypatch.setattr(state, "STATE_FILE", tmp_path / "state.json")
+    result = state.load()
+    assert result["post_details"] == {}
