@@ -142,6 +142,25 @@ jobs:
             --hora "${{ steps.publicar.outputs.hora }}" \
             --media_id ${{ steps.publicar.outputs.media_id }}
 
+      - name: Enviar votacao no Telegram
+        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
+        continue-on-error: true
+        run: |
+          cd content-engine
+          HOJE=$(date -u +"%Y-%m-%d")
+          CAT="${{ steps.categoria.outputs.categoria }}"
+          CHAVE="${HOJE}_${CAT}"
+          TIPO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('tipo_veredicto','A') if f else 'A')")
+          TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
+          CRIME=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('crime','') if f else '')")
+          python -m engagement.feedback send_rating_request \
+            --chave "$CHAVE" \
+            --media_id ${{ steps.publicar.outputs.media_id }} \
+            --tipo_veredicto "$TIPO" \
+            --titulo "$TITULO" \
+            --crime "$CRIME" \
+            --categoria "$CAT"
+
       - name: Postar comentario de engajamento
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
