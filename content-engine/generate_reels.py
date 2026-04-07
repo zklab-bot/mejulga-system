@@ -42,7 +42,7 @@ def _calcular_numero_processo(categoria: str, pasta: Path) -> str:
     """Gera número de processo sequencial por categoria. Ex: AMO-003/26."""
     prefixo = categoria[:3].upper()
     ano = datetime.now().strftime("%y")
-    existentes = list(pasta.glob(f"*_{categoria}_reels.json"))
+    existentes = list(pasta.glob(f"*_{categoria}_reels.json")) if pasta.exists() else []
     numero = len(existentes) + 1
     return f"{prefixo}-{numero:03d}/{ano}"
 
