@@ -218,7 +218,7 @@ Responda SOMENTE com este JSON:
     prompt_atual = prompt
     for tentativa in range(1, 3):  # máximo 2 tentativas
         resposta = claude_client.messages.create(
-            model="claude-sonnet-4-5",
+            model="claude-sonnet-4-6",
             max_tokens=2000,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt_atual}]
@@ -226,7 +226,18 @@ Responda SOMENTE com este JSON:
 
         texto = resposta.content[0].text.strip()
         texto = texto.replace("```json", "").replace("```", "").strip()
-        roteiro = json.loads(texto)
+        try:
+            roteiro = json.loads(texto)
+        except json.JSONDecodeError as e:
+            erro = f"Resposta não é JSON válido: {e}"
+            print(f"⚠️  Tentativa {tentativa}/2 — {erro}")
+            if tentativa < 2:
+                prompt_atual = (
+                    prompt + f"\n\nATENÇÃO — Sua resposta anterior não era JSON válido.\n"
+                    "Responda SOMENTE com JSON válido, sem texto antes ou depois."
+                )
+            roteiro = {}
+            continue
 
         erro = _validar_roteiro(roteiro)
         if erro is None:
