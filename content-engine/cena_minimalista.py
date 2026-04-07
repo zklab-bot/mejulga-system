@@ -97,11 +97,11 @@ def cena_minimalista(roteiro: dict) -> Image.Image:
 
     # ── TEXTO PRINCIPAL (veredicto) ───────────────────────────────
     cenas   = roteiro.get("cenas", [])
-    # Pega a última cena (diagnóstico final) ou todas se quiser
-    conclusao = roteiro.get("conclusao", "")
+    # Usa frase_printavel (campo novo) ou texto da cena 5 (VEREDICTO)
+    conclusao = roteiro.get("frase_printavel", "")
     if not conclusao:
-        # Fallback: usa texto da última cena
-        conclusao = cenas[-1]["texto"] if cenas else "Sem defesa possível."
+        cena5 = next((c for c in cenas if c.get("numero") == 5), None)
+        conclusao = cena5["texto"] if cena5 else "Sem apelação."
 
     linhas  = quebrar_texto(conclusao, max_chars=16)
     n       = len(linhas)
