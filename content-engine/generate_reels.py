@@ -215,16 +215,33 @@ Responda SOMENTE com este JSON:
   "sugestao_musica": "estilo musical sugerido"
 }}"""
 
-    resposta = claude_client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    prompt_atual = prompt
+    for tentativa in range(1, 3):  # máximo 2 tentativas
+        resposta = claude_client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=2000,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt_atual}]
+        )
 
-    texto = resposta.content[0].text.strip()
-    texto = texto.replace("```json", "").replace("```", "").strip()
-    return json.loads(texto)
+        texto = resposta.content[0].text.strip()
+        texto = texto.replace("```json", "").replace("```", "").strip()
+        roteiro = json.loads(texto)
+
+        erro = _validar_roteiro(roteiro)
+        if erro is None:
+            return roteiro
+
+        print(f"⚠️  Tentativa {tentativa}/2 — roteiro rejeitado: {erro}")
+        if tentativa < 2:
+            prompt_atual = (
+                prompt + f"\n\nATENÇÃO — Sua resposta anterior foi rejeitada:\n{erro}\n"
+                "Corrija e responda novamente com JSON válido."
+            )
+
+    # Retorna o último gerado mesmo com erro (evita travar o workflow)
+    print("⚠️  Usando roteiro da tentativa 2 sem aprovação — verificar manualmente.")
+    return roteiro
 
 
 # ─── Geração de áudio ─────────────────────────────────────────────────────────
