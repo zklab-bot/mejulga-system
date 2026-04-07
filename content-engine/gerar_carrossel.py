@@ -275,9 +275,13 @@ def base_slide(template_nome: str | None = None) -> tuple[Image.Image, ImageDraw
 
 # ─── Slides ───────────────────────────────────────────────────────────────────
 
-def slide_intro(categoria: str, numero: int, total: int) -> Image.Image:
+def slide_intro(roteiro: dict, numero: int, total: int) -> Image.Image:
     img, draw = base_slide("intro_bg.png")
     cx = LARGURA // 2
+
+    numero_processo = roteiro.get("numero_processo", "")
+    titulo = roteiro.get("titulo", "")
+    crime = roteiro.get("crime", "")
 
     # Contador sutil
     fonte_num = encontrar_fonte(22, bold=False)
@@ -295,15 +299,23 @@ def slide_intro(categoria: str, numero: int, total: int) -> Image.Image:
     # Sublinhado dourado
     draw.rectangle([cx - 120, 324, cx + 120, 329], fill=DOURADO)
 
-    # Texto intro (multilinha, Voice DNA)
-    intro   = INTRO_TEXTOS.get(categoria, "A Dra. Julga\ntem um recado para você.")
-    linhas  = intro.split("\n")
-    fonte_t = encontrar_fonte(48, bold=False)
-    y = 380
-    for linha in linhas:
-        draw.text((cx, y), linha, font=fonte_t, fill=ROXO_VIBRANTE, anchor="mm")
-        bbox = draw.textbbox((0, 0), linha, font=fonte_t)
-        y += (bbox[3] - bbox[1]) + 16
+    # Número do processo — identificador único do caso
+    if numero_processo:
+        fonte_proc = encontrar_fonte(32, bold=False)
+        draw.text((cx, 370), f"Processo {numero_processo}", font=fonte_proc,
+                  fill=CINZA_MEDIO, anchor="mm")
+
+    # Título do caso
+    if titulo:
+        fonte_titulo = encontrar_fonte(52, bold=True)
+        draw.text((cx, 450), titulo, font=fonte_titulo,
+                  fill=ROXO_VIBRANTE, anchor="mm")
+
+    # Crime em destaque (se disponível)
+    if crime:
+        fonte_crime = encontrar_fonte(34, bold=False)
+        draw.text((cx, 530), f"Crime: {crime}", font=fonte_crime,
+                  fill=ROXO_PROFUNDO, anchor="mm")
 
     # Badge "Deslize" — pill com borda, sem fill pesado
     fonte_badge = encontrar_fonte(28, bold=False)
@@ -503,10 +515,15 @@ def main():
         print(f"Carrossel — {categoria} — {hoje} [template Canva]")
         roteiro_t  = carregar_roteiro(categoria, hoje)
         cenas_t    = roteiro_t.get("cenas", [])[:4]
-        conclusao_t = roteiro_t.get("conclusao", "Sem defesa possível.")
+        todas_cenas_t = roteiro_t.get("cenas", [])
+        conclusao_t = (
+            roteiro_t.get("frase_printavel")
+            or (todas_cenas_t[4]["texto"] if len(todas_cenas_t) > 4 else None)
+            or "Sem apelação."
+        )
 
-        # Slide 1 — intro
-        intro_txt = INTRO_TEXTOS.get(categoria, "A Dra. Julga\ntem um recado para você.")
+        # Slide 1 — intro com dados únicos do processo
+        intro_txt = roteiro_t.get("titulo") or roteiro_t.get("numero_processo") or categoria
         s1 = _processar_template(TEMPLATES_DIR / "1.png", "intro", intro_txt)
         p1 = pasta_saida / f"{hoje}_{categoria}_slide_01.png"
         s1.save(str(p1)); slides.append(p1)
@@ -538,15 +555,15 @@ def main():
     cenas     = roteiro.get("cenas", [])[:4]
     todas_cenas = roteiro.get("cenas", [])
     conclusao = (
-        roteiro.get("conclusao")
+        roteiro.get("frase_printavel")
         or (todas_cenas[4]["texto"] if len(todas_cenas) > 4 else None)
-        or "Sem defesa possível."
+        or "Sem apelação."
     )
 
     total_slides = 6
 
     print("  Slide 1/6 — Intro")
-    s1 = slide_intro(categoria, 1, total_slides)
+    s1 = slide_intro(roteiro, 1, total_slides)
     p1 = pasta_saida / f"{hoje}_{categoria}_slide_01.png"
     s1.save(str(p1))
     slides.append(p1)
