@@ -85,7 +85,7 @@ def _enviar_mensagem_telegram(
             json={"chat_id": chat_id, "text": texto, "reply_markup": keyboard},
             timeout=10,
         )
-    except Exception:
+    except requests.exceptions.RequestException:
         pass  # Non-fatal: Telegram failure should not break the workflow
 
 

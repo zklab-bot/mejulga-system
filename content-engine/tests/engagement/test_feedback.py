@@ -45,6 +45,8 @@ def test_store_rating_chave_inexistente_nao_quebra(tmp_path, monkeypatch):
 
     # No exception raised for unknown key
     feedback.store_rating("chave_inexistente", 3)
+    s = state.load()
+    assert "chave_inexistente" not in s.get("post_details", {})
 
 
 def test_send_rating_request_salva_detalhes(tmp_path, monkeypatch):
