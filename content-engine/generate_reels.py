@@ -33,9 +33,61 @@ CATEGORIAS_INFO = {
 }
 
 
-def _sorteio_veredicto() -> str:
-    """Sorteia o tipo de veredicto com pesos 60/25/15."""
-    return random.choices(["A", "B", "C"], weights=[60, 25, 15])[0]
+def _calcular_pesos_veredicto(post_details: dict) -> list:
+    """Calcula pesos dinâmicos baseados nas notas do dono.
+
+    Retorna [peso_A, peso_B, peso_C]. Soma sempre 100.
+    Usa pesos base [60, 25, 15] quando dados são insuficientes (< 3 notas por variação).
+    """
+    PESOS_BASE = {"A": 60, "B": 25, "C": 15}
+    VARIACOES = ["A", "B", "C"]
+    MIN_NOTAS = 3
+    MAX_NOTAS = 10
+
+    notas_por_variacao = {"A": [], "B": [], "C": []}
+    for detalhes in post_details.values():
+        nota = detalhes.get("nota")
+        tipo = detalhes.get("tipo_veredicto")
+        if nota is not None and tipo in notas_por_variacao:
+            notas_por_variacao[tipo].append(nota)
+
+    if any(len(notas_por_variacao[v]) < MIN_NOTAS for v in VARIACOES):
+        return [60, 25, 15]
+
+    medias = {}
+    for v in VARIACOES:
+        ultimas = notas_por_variacao[v][-MAX_NOTAS:]
+        medias[v] = sum(ultimas) / len(ultimas)
+
+    todas_notas = []
+    for v in VARIACOES:
+        todas_notas.extend(notas_por_variacao[v][-MAX_NOTAS:])
+    media_global = sum(todas_notas) / len(todas_notas)
+
+    pesos_raw = {v: max(5, round(PESOS_BASE[v] * medias[v] / media_global)) for v in VARIACOES}
+    soma = sum(pesos_raw.values())
+    pesos_norm = {v: round(pesos_raw[v] * 100 / soma) for v in VARIACOES}
+
+    # Clamp each weight to minimum 5 after normalization, taking the excess from the largest
+    for v in VARIACOES:
+        if pesos_norm[v] < 5:
+            deficit = 5 - pesos_norm[v]
+            pesos_norm[v] = 5
+            v_maior = max((x for x in VARIACOES if x != v), key=lambda x: pesos_norm[x])
+            pesos_norm[v_maior] -= deficit
+
+    diff = 100 - sum(pesos_norm.values())
+    if diff != 0:
+        v_maior = max(VARIACOES, key=lambda v: pesos_raw[v])
+        pesos_norm[v_maior] += diff
+
+    return [pesos_norm["A"], pesos_norm["B"], pesos_norm["C"]]
+
+
+def _sorteio_veredicto(post_details: dict = None) -> str:
+    """Sorteia o tipo de veredicto com pesos dinâmicos baseados nas notas do dono."""
+    pesos = _calcular_pesos_veredicto(post_details or {})
+    return random.choices(["A", "B", "C"], weights=pesos)[0]
 
 
 def _calcular_numero_processo(categoria: str, pasta: Path) -> str:
@@ -130,7 +182,12 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
     """Gera roteiro de Reels em cenas curtas com veredicto jurídico."""
 
     if tipo_veredicto is None:
-        tipo_veredicto = _sorteio_veredicto()
+        try:
+            from engagement.shared import state as _state
+            _post_details = _state.load().get("post_details", {})
+        except Exception:
+            _post_details = {}
+        tipo_veredicto = _sorteio_veredicto(_post_details)
     if pasta is None:
         pasta = Path(__file__).parent / "generated" / "reels"
 

@@ -150,3 +150,76 @@ def test_gerar_roteiro_retorna_mesmo_invalido_apos_2_tentativas(monkeypatch, tmp
     resultado = gr.gerar_roteiro("amor", tipo_veredicto="A", pasta=tmp_path)
     # Não levanta exceção — retorna o roteiro mesmo inválido
     assert resultado is not None
+
+
+def _post_details_com_notas(notas_a, notas_b, notas_c):
+    """Cria post_details com notas sintéticas por variação."""
+    details = {}
+    for i, nota in enumerate(notas_a):
+        details[f"data_a_{i}_amor"] = {"tipo_veredicto": "A", "nota": nota}
+    for i, nota in enumerate(notas_b):
+        details[f"data_b_{i}_amor"] = {"tipo_veredicto": "B", "nota": nota}
+    for i, nota in enumerate(notas_c):
+        details[f"data_c_{i}_amor"] = {"tipo_veredicto": "C", "nota": nota}
+    return details
+
+
+def test_calcular_pesos_retorna_base_sem_dados():
+    assert gr._calcular_pesos_veredicto({}) == [60, 25, 15]
+
+
+def test_calcular_pesos_retorna_base_com_dados_insuficientes():
+    # Variação B com apenas 2 notas — não ativa ajuste
+    details = _post_details_com_notas([4, 5, 4], [3, 3], [3, 3, 3])
+    assert gr._calcular_pesos_veredicto(details) == [60, 25, 15]
+
+
+def test_calcular_pesos_ajustados_soma_100():
+    details = _post_details_com_notas([4, 5, 4], [2, 2, 3], [3, 3, 3])
+    pesos = gr._calcular_pesos_veredicto(details)
+    assert sum(pesos) == 100
+
+
+def test_calcular_pesos_a_favorecida_quando_notas_altas():
+    # A muito melhor que B e C
+    details = _post_details_com_notas([5, 5, 5], [1, 1, 1], [1, 1, 1])
+    pesos = gr._calcular_pesos_veredicto(details)
+    assert pesos[0] > pesos[1]
+    assert pesos[0] > pesos[2]
+
+
+def test_calcular_pesos_nenhuma_variacao_abaixo_de_5():
+    # Variação C com notas muito baixas
+    details = _post_details_com_notas([5, 5, 5], [5, 5, 5], [1, 1, 1])
+    pesos = gr._calcular_pesos_veredicto(details)
+    assert all(p >= 5 for p in pesos)
+
+
+def test_calcular_pesos_usa_apenas_ultimas_10_notas():
+    # A tem 12 notas: 9 ruins + últimas 3 boas
+    notas_a = [1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5]
+    notas_b = [3, 3, 3]
+    notas_c = [3, 3, 3]
+    details_12 = _post_details_com_notas(notas_a, notas_b, notas_c)
+    pesos_12 = gr._calcular_pesos_veredicto(details_12)
+
+    # A com exatamente as últimas 10 notas: [1,1,1,1,1,1,1,5,5,5] → média 2.7
+    notas_a_10 = [1, 1, 1, 1, 1, 1, 1, 5, 5, 5]
+    details_10 = _post_details_com_notas(notas_a_10, notas_b, notas_c)
+    pesos_10 = gr._calcular_pesos_veredicto(details_10)
+
+    assert pesos_12 == pesos_10
+
+
+def test_calcular_pesos_exemplo_do_spec():
+    # Spec: A=[4,5,4] B=[2,2,3] C=[3,3,3] → A=72, B=16, C=12
+    details = _post_details_com_notas([4, 5, 4], [2, 2, 3], [3, 3, 3])
+    pesos = gr._calcular_pesos_veredicto(details)
+    assert pesos == [72, 16, 12]
+
+
+def test_sorteio_veredicto_usa_post_details(monkeypatch):
+    # Com A dominante, A deve ser sorteado na maioria das vezes
+    details = _post_details_com_notas([5, 5, 5], [1, 1, 1], [1, 1, 1])
+    resultados = [gr._sorteio_veredicto(details) for _ in range(50)]
+    assert resultados.count("A") > 30  # alta concentração em A
