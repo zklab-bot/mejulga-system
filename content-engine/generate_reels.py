@@ -126,45 +126,93 @@ REGRA: Responda SOMENTE com JSON válido, sem texto fora dele."""
 
 # ─── Geração do roteiro ───────────────────────────────────────────────────────
 
-def gerar_roteiro(categoria: str) -> dict:
-    """Gera roteiro de Reels em cenas curtas."""
+def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None) -> dict:
+    """Gera roteiro de Reels em cenas curtas com veredicto jurídico."""
 
+    if tipo_veredicto is None:
+        tipo_veredicto = _sorteio_veredicto()
+    if pasta is None:
+        pasta = Path(__file__).parent / "generated" / "reels"
+
+    numero_processo = _calcular_numero_processo(categoria, pasta)
     info = CATEGORIAS_INFO.get(categoria, {"label": categoria, "emoji": "⚖️"})
 
-    prompt = f"""Crie um roteiro de Reels de 20-25 segundos para a Dra. Julga sobre "{info['label']}".
+    _INSTRUCOES_VEREDICTO = {
+        "A": (
+            'Cena 5 — SENTENÇA CURTA (Variação A):\n'
+            'texto: "VEREDICTO: Culpado por [crime específico e engraçado]. '
+            '[Reincidente. / Atenuante negado.] Sem apelação."\n'
+            'texto_slide: "VEREDICTO\\n[crime em 4-6 palavras].\\nSem apelação."\n'
+            'Exemplo: "VEREDICTO: Culpado por simulação laboral em ambiente remoto. '
+            'Reincidente. Sem apelação."'
+        ),
+        "B": (
+            'Cena 5 — PENA ABSURDA (Variação B):\n'
+            'texto: "VEREDICTO: Condenado a [pena criativa e específica]. '
+            'Pena suspensa se [condição impossível de cumprir]. Improvável."\n'
+            'texto_slide: "VEREDICTO\\nCondenado a [pena em 4-5 palavras].\\nImprovável."\n'
+            'Exemplo: "VEREDICTO: Condenado a pagar em dinheiro por 90 dias. '
+            'Pena suspensa se resistir à promoção. Improvável."'
+        ),
+        "C": (
+            'Cena 5 — AUTOS DO PROCESSO (Variação C):\n'
+            f'texto: "Processo {numero_processo}. Réu: você. Crime: [nome do crime]. '
+            'Provas: [2 itens das cenas anteriores]. Decisão: CULPADO."\n'
+            f'texto_slide: "Processo {numero_processo}\\nCrime: [crime]\\nDecisão: CULPADO."\n'
+            f'Exemplo: "Processo {numero_processo}. Réu: você. Crime: ghosting sazonal. '
+            'Provas: 3 meses de silêncio, volta às 23h47. Decisão: CULPADO."'
+        ),
+    }
+    instrucao_veredicto = _INSTRUCOES_VEREDICTO[tipo_veredicto]
 
-O roteiro deve ter EXATAMENTE 6 cenas curtas, cada uma com 3-4 segundos de fala.
+    prompt = f"""Crie um roteiro de carrossel para a Dra. Julga sobre a categoria "{info['label']}".
 
-Estrutura obrigatória:
-- Cena 1: Hook — frase de abertura chocante ou curiosa (direto ao ponto)
-- Cena 2: Apresentação do caso (situação identificável, específica)
-- Cena 3: Detalhe engraçado do caso (o absurdo que piora tudo)
-- Cena 4: Agravante (a prova definitiva da culpa)
-- Cena 5: Veredicto — diagnóstico específico e criativo + "Sem defesa possível."
-- Cena 6: CTA — "Descobre o seu em mejulga.com.br"
+EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala, pode ter conectores) e `texto_slide` (card visual — ângulo DIFERENTE do texto, não um resumo).
 
-Para cada cena gere DOIS textos:
-1. `texto`: narração falada para o vídeo (pode ter conectores, flui como fala)
-2. `texto_slide`: versão para card visual — frase completa e autossuficiente, sem conectores no início, máx 2 linhas, segunda pessoa direta, específica e devastadora
+ESTRUTURA OBRIGATÓRIA:
+- Cena 1 — ABERTURA DO PROCESSO: flagrante direto ou "Processo {numero_processo}. Réu: você." Nunca "Gente,". Começa com dado concreto.
+- Cena 2 — INTIMAÇÃO: conduta fria com número, horário ou dado específico.
+- Cena 3 — PRIMEIRA PROVA: detalhe mais absurdo e específico que a Cena 2. Sem conectores no slide.
+- Cena 4 — AGRAVANTE: comportamento que contradiz a desculpa implícita da Cena 2. O texto começa com "Agravante:" ou "Pior:".
+- Cena 5 — VEREDICTO: {instrucao_veredicto}
+- Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
 
-A Cena 5 vira o `conclusao` (veredicto do slide final) — deve ter diagnóstico inventivo e específico.
+EXEMPLO CORRETO (categoria: trabalho):
+{{
+  "cenas": [
+    {{"numero": 1, "texto": "Processo TRA-007/26. Réu: você. Alegação: trabalha demais.", "texto_slide": "Processo TRA-007/26.\\nRéu: você."}},
+    {{"numero": 2, "texto": "Quarta-feira, 14h37. Reunião do Teams. Câmera desligada.", "texto_slide": "Reunião do Teams.\\nQuarto vídeo do Instagram."}},
+    {{"numero": 3, "texto": "Você estava no quarto vídeo do feed falando 'tô aqui' a cada 8 minutos.", "texto_slide": "'Tô aqui, tô aqui.'\\nA cada 8 minutos."}},
+    {{"numero": 4, "texto": "Agravante: passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "47 minutos.\\nSlide que ninguém vai ler."}},
+    {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},
+    {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
+  ]
+}}
+
+ANTI-EXEMPLO (não faça isso — categoria: dinheiro):
+- ❌ texto cena 1: "Gente, ele parcelou a pizza" (começa com "Gente,")
+- ❌ texto cena 5: "Diagnóstico: síndrome do endividamento crônico" (jargão médico)
+- ❌ texto_slide cena 2 igual ao texto cena 2 com quebra de linha (redundância)
 
 Responda SOMENTE com este JSON:
 {{
   "categoria": "{categoria}",
-  "titulo": "título curto do caso",
+  "titulo": "título curto do caso (O/A + arquétipo, ex: 'O Ocupado Profissional')",
+  "numero_processo": "{numero_processo}",
+  "crime": "nome curto do crime em 4-7 palavras (para print)",
+  "tipo_veredicto": "{tipo_veredicto}",
+  "frase_printavel": "o veredicto em ≤14 palavras, sem 'VEREDICTO:' na frente",
   "cenas": [
-    {{"numero": 1, "duracao_segundos": 3, "texto": "frase narrada cena 1", "texto_slide": "versão visual cena 1"}},
-    {{"numero": 2, "duracao_segundos": 4, "texto": "frase narrada cena 2", "texto_slide": "versão visual cena 2"}},
-    {{"numero": 3, "duracao_segundos": 4, "texto": "frase narrada cena 3", "texto_slide": "versão visual cena 3"}},
-    {{"numero": 4, "duracao_segundos": 4, "texto": "frase narrada cena 4", "texto_slide": "versão visual cena 4"}},
-    {{"numero": 5, "duracao_segundos": 4, "texto": "frase narrada cena 5", "texto_slide": "versão visual cena 5"}},
-    {{"numero": 6, "duracao_segundos": 3, "texto": "frase narrada cena 6", "texto_slide": "versão visual cena 6"}}
+    {{"numero": 1, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 2, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 3, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 4, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 5, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 6, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}}
   ],
-  "conclusao": "diagnóstico específico da Cena 5. Sem defesa possível.",
   "texto_completo": "texto corrido de todas as cenas unidas para o áudio",
-  "legenda_instagram": "legenda completa para o post do Reels com hashtags",
-  "sugestao_musica": "sugestão de estilo musical de fundo (ex: lo-fi calmo, dramático orquestral)"
+  "legenda_instagram": "legenda completa com hashtags relevantes",
+  "sugestao_musica": "estilo musical sugerido"
 }}"""
 
     resposta = claude_client.messages.create(
