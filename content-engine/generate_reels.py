@@ -297,16 +297,21 @@ def salvar_roteiro(roteiro: dict, pasta: Path):
     arquivo_txt = pasta / f"{hoje}_{categoria}_roteiro_capcut.txt"
     with open(arquivo_txt, "w", encoding="utf-8") as f:
         f.write("=" * 50 + "\n")
-        f.write(f"ROTEIRO REELS — DRA. JULGA\n")
+        f.write(f"ROTEIRO — DRA. JULGA\n")
         f.write(f"Categoria: {categoria.upper()}\n")
         f.write(f"Título: {roteiro.get('titulo', '')}\n")
+        f.write(f"Processo: {roteiro.get('numero_processo', '')}\n")
+        f.write(f"Crime: {roteiro.get('crime', '')}\n")
+        f.write(f"Veredicto: {roteiro.get('frase_printavel', '')}\n")
+        f.write(f"Tipo veredicto: {roteiro.get('tipo_veredicto', '')}\n")
         f.write(f"Data: {hoje}\n")
         f.write("=" * 50 + "\n\n")
 
         f.write("CENAS:\n\n")
         for cena in roteiro.get("cenas", []):
             f.write(f"CENA {cena['numero']} ({cena['duracao_segundos']}s)\n")
-            f.write(f"  → {cena['texto']}\n\n")
+            f.write(f"  NARRAÇÃO: {cena['texto']}\n")
+            f.write(f"  SLIDE:    {cena.get('texto_slide', '').replace(chr(10), ' | ')}\n\n")
 
         f.write("-" * 50 + "\n")
         f.write("LEGENDA INSTAGRAM:\n\n")
