@@ -1,0 +1,46 @@
+{
+  "categoria": "trabalho",
+  "titulo": "O Ocupado Profissional",
+  "cenas": [
+    {
+      "numero": 1,
+      "duracao_segundos": 3,
+      "texto": "Você diz que não tem tempo pra nada porque trabalha demais.",
+      "texto_slide": "Você diz que não tem tempo pra nada.\nTrabalha demais."
+    },
+    {
+      "numero": 2,
+      "duracao_segundos": 4,
+      "texto": "Mas eu te observei. Quarta-feira, 14h37. Reunião do Teams. Câmera desligada.",
+      "texto_slide": "Quarta, 14h37. Reunião do Teams.\nCâmera desligada."
+    },
+    {
+      "numero": 3,
+      "duracao_segundos": 4,
+      "texto": "Você estava no quarto vídeo do Instagram enquanto falava 'tô aqui, tô aqui' a cada 8 minutos.",
+      "texto_slide": "Quarto vídeo do Instagram.\n'Tô aqui, tô aqui' a cada 8 minutos."
+    },
+    {
+      "numero": 4,
+      "duracao_segundos": 4,
+      "texto": "Pior: você passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.",
+      "texto_slide": "47 minutos formatando slide.\nProtelando o relatório que importa."
+    },
+    {
+      "numero": 5,
+      "duracao_segundos": 4,
+      "texto": "Diagnóstico: síndrome da produtividade performática com procrastinação corporativa crônica. Sem defesa possível.",
+      "texto_slide": "Diagnóstico: produtividade performática.\nProcrastinação corporativa crônica."
+    },
+    {
+      "numero": 6,
+      "duracao_segundos": 3,
+      "texto": "Descobre o seu diagnóstico em mejulga.com.br",
+      "texto_slide": "Descobre o teu diagnóstico.\nmejulga.com.br"
+    }
+  ],
+  "conclusao": "Diagnóstico: síndrome da produtividade performática com procrastinação corporativa crônica. Sem defesa possível.",
+  "texto_completo": "Você diz que não tem tempo pra nada porque trabalha demais. Mas eu te observei. Quarta-feira, 14h37. Reunião do Teams. Câmera desligada. Você estava no quarto vídeo do Instagram enquanto falava 'tô aqui, tô aqui' a cada 8 minutos. Pior: você passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório. Diagnóstico: síndrome da produtividade performática com procrastinação corporativa crônica. Sem defesa possível. Descobre o seu diagnóstico em mejulga.com.br",
+  "legenda_instagram": "Sessão emergencial: O Ocupado Profissional 📋\n\nQuarta, 14h37. Câmera desligada. Quarto vídeo do feed. \"Tô aqui, tô aqui.\"\n\n47 minutos formatando slide. Zero minutos no que importa.\n\nDiagnóstico: síndrome da produtividade performática com procrastinação corporativa crônica.\n\nSem defesa possível.\n\n🔍 Marca aquela pessoa que \"trabalha muito\" mas você sabe a verdade.\n\n💻 Descobre o teu diagnóstico completo em mejulga.com.br\n\n#draJulga #trabalho #homeoffice #procrastinacao #reuniao #produtividade #escritorio #corporativo #memestrabalho #humorbrasileiro #teamsmeeting",
+  "sugestao_musica": "lo-fi calmo com leve tensão"
+}

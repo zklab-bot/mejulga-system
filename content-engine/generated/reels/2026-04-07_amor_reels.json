@@ -1,0 +1,49 @@
+{
+  "categoria": "amor",
+  "titulo": "O Ocupado Profissional",
+  "numero_processo": "AMO-002/26",
+  "crime": "abandono afetivo por excesso de agenda",
+  "tipo_veredicto": "A",
+  "frase_printavel": "Culpado por abandono afetivo por excesso de agenda. Reincidente. Sem apelação.",
+  "cenas": [
+    {
+      "numero": 1,
+      "duracao_segundos": 3,
+      "texto": "Processo AMO-002/26. Réu: você. Acusação: ocupado demais pra namorar.",
+      "texto_slide": "Acusação:\n'Tô sem tempo agora.'"
+    },
+    {
+      "numero": 2,
+      "duracao_segundos": 4,
+      "texto": "Terça, 22h13. Mensagem dela há 4 horas. Você viu às 18h47.",
+      "texto_slide": "18h47: visualizado.\n22h13: sem resposta."
+    },
+    {
+      "numero": 3,
+      "duracao_segundos": 4,
+      "texto": "Nesse intervalo você assistiu 11 vídeos no YouTube e comentou em 3 posts de gente que você mal conhece.",
+      "texto_slide": "11 vídeos.\n3 comentários em perfis aleatórios."
+    },
+    {
+      "numero": 4,
+      "duracao_segundos": 4,
+      "texto": "Agravante: quando finalmente respondeu, foi 'oi bb, tava ocupado', seguido de um meme que você mandou pra outros 6 contatos.",
+      "texto_slide": "'oi bb tava ocupado'\nMeme enviado a 6 pessoas."
+    },
+    {
+      "numero": 5,
+      "duracao_segundos": 4,
+      "texto": "VEREDICTO: Culpado por abandono afetivo por excesso de agenda. Reincidente. Sem apelação.",
+      "texto_slide": "VEREDICTO\nCulpado por abandono afetivo.\nSem apelação."
+    },
+    {
+      "numero": 6,
+      "duracao_segundos": 3,
+      "texto": "Veja seu processo em mejulga.com.br",
+      "texto_slide": "Veja seu processo.\nmejulga.com.br"
+    }
+  ],
+  "texto_completo": "Processo AMO-002/26. Réu: você. Acusação: ocupado demais pra namorar. Terça, 22h13. Mensagem dela há 4 horas. Você viu às 18h47. Nesse intervalo você assistiu 11 vídeos no YouTube e comentou em 3 posts de gente que você mal conhece. Agravante: quando finalmente respondeu, foi 'oi bb, tava ocupado', seguido de um meme que você mandou pra outros 6 contatos. VEREDICTO: Culpado por abandono afetivo por excesso de agenda. Reincidente. Sem apelação. Veja seu processo em mejulga.com.br",
+  "legenda_instagram": "Processo AMO-002/26 em andamento. Réu alega 'falta de tempo' mas as provas dizem o contrário. 📱⚖️\n\nJá foi intimado(a) pela Dra. Julga? Conta nos comentários qual foi o seu processo.\n\n#draJulga #relacionamento #amor #meme #humor #processo #culpado #ocupado #relacionamentos #namoro #courthouse #justiça",
+  "sugestao_musica": "trap minimalista com 808 grave, hi-hats secos, andamento 140bpm — clima de tribunal sério mas moderno"
+}
