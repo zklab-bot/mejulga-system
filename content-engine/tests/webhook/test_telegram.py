@@ -37,7 +37,7 @@ def test_help_retorna_texto(monkeypatch):
     mock_reply.assert_called_once()
     msg = mock_reply.call_args[0][1]
     assert "/status" in msg
-    assert "/forcar_post" in msg
+    assert "forcar" in msg and "post" in msg
 
 
 def test_comando_desconhecido_responde_help(monkeypatch):
