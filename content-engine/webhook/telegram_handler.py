@@ -123,16 +123,19 @@ def _handle_callback(callback: dict) -> None:
     if not token:
         return
 
-    requests.post(
-        f"https://api.telegram.org/bot{token}/answerCallbackQuery",
-        json={"callback_query_id": callback_id},
-        timeout=10,
-    )
-    requests.post(
-        f"https://api.telegram.org/bot{token}/editMessageText",
-        json={"chat_id": chat_id, "message_id": message_id, "text": texto_confirmacao},
-        timeout=10,
-    )
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/answerCallbackQuery",
+            json={"callback_query_id": callback_id},
+            timeout=10,
+        )
+        requests.post(
+            f"https://api.telegram.org/bot{token}/editMessageText",
+            json={"chat_id": chat_id, "message_id": message_id, "text": texto_confirmacao},
+            timeout=10,
+        )
+    except requests.exceptions.RequestException:
+        pass
 
 
 # ── Comandos ──────────────────────────────────────────────────────────────────
