@@ -483,6 +483,183 @@ def slide_veredicto(conclusao: str, numero: int, total: int) -> Image.Image:
     return img
 
 
+def slide_glossario_capa(glossario: dict, numero: int, total: int) -> Image.Image:
+    """Slide 1 do Glossário: capa com o termo em destaque."""
+    img, draw = base_slide()
+    cx = LARGURA // 2
+
+    # Contador sutil
+    fonte_num = encontrar_fonte(22, bold=False)
+    draw.text((cx, 30), f"{numero}/{total}", font=fonte_num,
+              fill=CINZA_MEDIO, anchor="mt")
+
+    # Badge "GLOSSÁRIO DA DRA. JULGA"
+    fonte_badge = encontrar_fonte(28, bold=True)
+    badge_txt = "GLOSSÁRIO DA DRA. JULGA"
+    badge_bbox = draw.textbbox((0, 0), badge_txt, font=fonte_badge)
+    bw = badge_bbox[2] - badge_bbox[0]
+    bh = badge_bbox[3] - badge_bbox[1]
+    pad_h, pad_v = 28, 12
+    draw.rounded_rectangle(
+        [cx - bw // 2 - pad_h, 110 - bh // 2 - pad_v,
+         cx + bw // 2 + pad_h, 110 + bh // 2 + pad_v],
+        radius=24, fill=ROXO_VIBRANTE
+    )
+    draw.text((cx, 110), badge_txt, font=fonte_badge,
+              fill=BRANCO_PURO, anchor="mm")
+
+    # Linha dourada
+    draw.rectangle([cx - 140, 160, cx + 140, 165], fill=DOURADO)
+
+    # Termo em destaque — auto-reduz se muito longo
+    termo = glossario.get("termo", "")
+    fonte_termo = encontrar_fonte(36, bold=True)
+    for sz in range(80, 32, -4):
+        f = encontrar_fonte(sz, bold=True)
+        bbox = draw.textbbox((0, 0), termo, font=f)
+        if (bbox[2] - bbox[0]) <= 960:
+            fonte_termo = f
+            break
+
+    draw.text((cx, 480), termo, font=fonte_termo,
+              fill=ROXO_PROFUNDO, anchor="mm")
+
+    # Linha dourada abaixo do termo
+    draw.rectangle([cx - 100, 535, cx + 100, 539], fill=DOURADO)
+
+    # Pronúncia
+    pronuncia = glossario.get("pronuncia", "")
+    if pronuncia:
+        fonte_pron = encontrar_fonte(30, bold=False)
+        draw.text((cx, 590), pronuncia, font=fonte_pron,
+                  fill=CINZA_MEDIO, anchor="mm")
+
+    # Classe gramatical
+    classe = glossario.get("classe_gramatical", "")
+    if classe:
+        fonte_classe = encontrar_fonte(28, bold=False)
+        draw.text((cx, 640), classe, font=fonte_classe,
+                  fill=ROXO_BORDA, anchor="mm")
+
+    # Badge "Deslize"
+    fonte_deslize = encontrar_fonte(28, bold=False)
+    draw.rounded_rectangle([180, 800, LARGURA - 180, 858],
+                            radius=30, fill=None,
+                            outline=ROXO_VIBRANTE, width=2)
+    draw.text((cx, 829), "Deslize para a definição  >>>",
+              font=fonte_deslize, fill=ROXO_VIBRANTE, anchor="mm")
+
+    # Rodapé
+    fonte_footer = encontrar_fonte(22, bold=False)
+    draw.text((cx, ALTURA - 28), "@dra.julga  •  mejulga.com.br",
+              font=fonte_footer, fill=CINZA_MEDIO, anchor="mm")
+
+    _desenhar_dots(draw, numero, total)
+    return img
+
+
+def slide_glossario_conteudo(label: str, texto: str,
+                              numero: int, total: int) -> Image.Image:
+    """Slides 2-5 do Glossário: label badge + texto centralizado."""
+    img, draw = base_slide()
+    cx = LARGURA // 2
+
+    # Contador sutil
+    fonte_num = encontrar_fonte(22, bold=False)
+    draw.text((cx, 28), f"{numero}/{total}", font=fonte_num,
+              fill=CINZA_MEDIO, anchor="mt")
+
+    # Label badge (same style as slide_cena)
+    fonte_lbl = encontrar_fonte(30, bold=True)
+    lbl_bbox = draw.textbbox((0, 0), label, font=fonte_lbl)
+    lbl_w = lbl_bbox[2] - lbl_bbox[0]
+    lbl_h = lbl_bbox[3] - lbl_bbox[1]
+    pad_h, pad_v = 28, 12
+    draw.rounded_rectangle(
+        [cx - lbl_w // 2 - pad_h, 78 - lbl_h // 2 - pad_v,
+         cx + lbl_w // 2 + pad_h, 78 + lbl_h // 2 + pad_v],
+        radius=24, fill=CINZA_SUAVE, outline=ROXO_VIBRANTE, width=2
+    )
+    draw.text((cx, 78), label, font=fonte_lbl, fill=ROXO_VIBRANTE, anchor="mm")
+
+    # Linha divisória
+    draw.rectangle([80, 122, LARGURA - 80, 124], fill=CINZA_SUAVE)
+
+    # Texto — auto-sized with word-wrap
+    max_w = 900
+    zona_top, zona_bot = 150, ALTURA - 120
+    fonte_txt = encontrar_fonte(36, bold=False)
+    linhas = []
+    line_h = 0
+
+    for sz in range(68, 28, -4):
+        fonte_txt = encontrar_fonte(sz, bold=False)
+        palavras = texto.split()
+        linhas = []
+        linha_atual = []
+        for palavra in palavras:
+            linha_atual.append(palavra)
+            bbox = draw.textbbox((0, 0), " ".join(linha_atual), font=fonte_txt)
+            if (bbox[2] - bbox[0]) > max_w and len(linha_atual) > 1:
+                linhas.append(" ".join(linha_atual[:-1]))
+                linha_atual = [palavra]
+        if linha_atual:
+            linhas.append(" ".join(linha_atual))
+
+        bbox_s = draw.textbbox((0, 0), "Ag", font=fonte_txt)
+        line_h = int((bbox_s[3] - bbox_s[1]) * 1.5)
+        total_h = len(linhas) * line_h
+        if total_h <= (zona_bot - zona_top):
+            break
+
+    total_h = len(linhas) * line_h
+    y = zona_top + (zona_bot - zona_top - total_h) // 2
+    for linha in linhas:
+        draw.text((cx, y), linha, font=fonte_txt,
+                  fill=ROXO_PROFUNDO, anchor="mm")
+        y += line_h
+
+    _desenhar_dots(draw, numero, total)
+
+    fonte_footer = encontrar_fonte(20, bold=False)
+    draw.text((cx, ALTURA - 16), "@dra.julga",
+              font=fonte_footer, fill=CINZA_MEDIO, anchor="mm")
+
+    return img
+
+
+def gerar_slides_glossario(glossario: dict, pasta: Path, hoje: str) -> list[Path]:
+    """Gera 6 slides PNG para o Glossário. Retorna lista de Paths."""
+    categoria = glossario.get("categoria", "geral")
+    total = 6
+    slides = []
+
+    def salvar(img: Image.Image, n: int) -> Path:
+        p = pasta / f"{hoje}_{categoria}_glossario_slide_0{n}.png"
+        img.save(str(p))
+        slides.append(p)
+        return p
+
+    print(f"  Slide 1/6 — capa ({glossario.get('termo', '')})")
+    salvar(slide_glossario_capa(glossario, 1, total), 1)
+
+    conteudos = [
+        ("DEFINIÇÃO",         glossario.get("definicao", "")),
+        ("COMO SE MANIFESTA", glossario.get("manifestacao", "")),
+        ("NÃO CONFUNDIR COM", glossario.get("nao_confundir", "")),
+        ("USADO EM FRASE",    f'"{glossario.get("frase_exemplo", "")}"'),
+    ]
+    for i, (label, texto) in enumerate(conteudos, start=2):
+        print(f"  Slide {i}/6 — {label.lower()}")
+        salvar(slide_glossario_conteudo(label, texto, i, total), i)
+
+    print("  Slide 6/6 — veredicto")
+    veredicto = glossario.get("veredicto", "Sem apelação.")
+    salvar(slide_veredicto(veredicto, 6, total), 6)
+
+    return slides
+
+
 # ─── Pipeline ─────────────────────────────────────────────────────────────────
 
 def carregar_roteiro(categoria: str, data: str) -> dict:
@@ -494,10 +671,22 @@ def carregar_roteiro(categoria: str, data: str) -> dict:
         return json.load(f)
 
 
+def carregar_glossario(categoria: str, data: str) -> dict:
+    pasta = Path(__file__).parent / "generated" / "reels"
+    arquivo = pasta / f"{data}_{categoria}_glossario.json"
+    if not arquivo.exists():
+        raise FileNotFoundError(f"Glossário não encontrado: {arquivo}")
+    with open(arquivo, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--categoria", required=True, choices=CATEGORIAS)
     parser.add_argument("--data", default=None)
+    parser.add_argument("--formato", default="carrossel",
+                        choices=["carrossel", "glossario"],
+                        help="Tipo de post a renderizar")
     args = parser.parse_args()
 
     hoje      = args.data or datetime.now().strftime("%Y-%m-%d")
@@ -505,6 +694,16 @@ def main():
 
     pasta_saida = Path(__file__).parent / "generated" / "reels"
     pasta_saida.mkdir(parents=True, exist_ok=True)
+
+    if args.formato == "glossario":
+        print(f"Glossário — {categoria} — {hoje}")
+        glossario = carregar_glossario(categoria, hoje)
+        slides = gerar_slides_glossario(glossario, pasta_saida, hoje)
+        print(f"\nSlides gerados em {pasta_saida}")
+        for s in slides:
+            print(f"   {s.name}")
+        return slides
+
     slides = []
 
     # ── Modo 1: templates completos (1.png–6.png) ─────────────────────────────
