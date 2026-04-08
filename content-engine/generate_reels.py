@@ -517,13 +517,25 @@ def main():
                         help="Categoria do Reels")
     parser.add_argument("--sem_audio", action="store_true",
                         help="Gera só o roteiro sem o áudio")
+    parser.add_argument("--formato", default="carrossel",
+                        choices=["carrossel", "glossario"],
+                        help="Tipo de post a gerar")
     args = parser.parse_args()
-
-    print(f"🎬 Gerando roteiro de Reels — categoria: {args.categoria}")
 
     # Pasta de saída
     pasta = Path(__file__).parent / "generated" / "reels"
     pasta.mkdir(parents=True, exist_ok=True)
+
+    if args.formato == "glossario":
+        print(f"📖 Gerando Glossário — categoria: {args.categoria}")
+        glossario = gerar_glossario(args.categoria, pasta=pasta)
+        arquivo = salvar_glossario(glossario, pasta)
+        print(f"\n✅ Glossário salvo em: {arquivo}")
+        print(f"   Termo: {glossario.get('termo', '')}")
+        print(f"   Veredicto: {glossario.get('veredicto', '')}")
+        return
+
+    print(f"🎬 Gerando roteiro de Reels — categoria: {args.categoria}")
 
     # Gera roteiro
     print("📝 Gerando roteiro com IA...")
