@@ -8,6 +8,7 @@ Uso: python post_carrossel_instagram.py --categoria dinheiro
 import os
 import io
 import sys
+import json
 import time
 import argparse
 import requests
@@ -214,11 +215,6 @@ def main():
                         help="Tipo de post a publicar")
     args = parser.parse_args()
 
-    # Em modo --output-id, redireciona todos os logs para stderr
-    # para que apenas o media_id seja capturado pelo bash
-    if args.output_id:
-        sys.stdout = sys.stderr
-
     for var, val in [("META_ACCESS_TOKEN", META_ACCESS_TOKEN),
                      ("IG_ACCOUNT_ID", IG_ACCOUNT_ID)]:
         if not val:
@@ -227,53 +223,64 @@ def main():
     hoje = args.data or datetime.now().strftime("%Y-%m-%d")
     categoria = args.categoria
 
-    print(f"\n🎠 Publicando carrossel — {categoria} — {hoje}\n")
+    # Em modo --output-id, redireciona todos os logs para stderr
+    # para que apenas o media_id seja capturado pelo bash.
+    # O try/finally garante que stdout seja restaurado mesmo em caso de erro.
+    if args.output_id:
+        sys.stdout = sys.stderr
+    try:
+        print(f"\n🎠 Publicando carrossel — {categoria} — {hoje}\n")
 
-    # Localiza slides
-    slides = localizar_slides(categoria, hoje, args.formato)
-    print(f"  📂 {len(slides)} slides encontrados")
+        # Localiza slides
+        slides = localizar_slides(categoria, hoje, args.formato)
+        print(f"  📂 {len(slides)} slides encontrados")
 
-    # Upload de cada slide para catbox.moe
-    print("\n📦 PASSO 1: Upload dos slides para catbox.moe")
-    image_urls = []
-    for i, slide in enumerate(slides):
-        print(f"  ⬆️  Slide {i+1}/{len(slides)}: {slide.name}")
-        url = upload_catbox(slide)
-        image_urls.append(url)
-        print(f"       ✅ {url}")
+        # Upload de cada slide para catbox.moe
+        print("\n📦 PASSO 1: Upload dos slides para catbox.moe")
+        image_urls = []
+        for i, slide in enumerate(slides):
+            print(f"  ⬆️  Slide {i+1}/{len(slides)}: {slide.name}")
+            url = upload_catbox(slide)
+            image_urls.append(url)
+            print(f"       ✅ {url}")
 
-    # Criar containers individuais
-    print("\n📦 PASSO 2: Criando containers de imagem")
-    container_ids = []
-    for i, url in enumerate(image_urls):
-        print(f"  📸 Container {i+1}/{len(image_urls)}...")
-        cid = criar_container_imagem(url)
-        print(f"       ID: {cid} — aguardando FINISHED...")
-        aguardar_container_pronto(cid)
-        container_ids.append(cid)
-        print(f"       ✅ pronto")
+        # Criar containers individuais
+        print("\n📦 PASSO 2: Criando containers de imagem")
+        container_ids = []
+        for i, url in enumerate(image_urls):
+            print(f"  📸 Container {i+1}/{len(image_urls)}...")
+            cid = criar_container_imagem(url)
+            print(f"       ID: {cid} — aguardando FINISHED...")
+            aguardar_container_pronto(cid)
+            container_ids.append(cid)
+            print(f"       ✅ pronto")
 
-    # Criar carrossel
-    print("\n📦 PASSO 3: Criando carrossel")
-    if args.formato == "glossario":
-        import json
-        pasta_json = Path(__file__).parent / "generated" / "reels"
-        arq = pasta_json / f"{hoje}_{categoria}_glossario.json"
-        glossario = json.load(open(arq, encoding="utf-8")) if arq.exists() else {}
-        caption = glossario.get("legenda_instagram") or CATEGORIAS_CAPTION.get(categoria, "")
-    else:
-        caption = CATEGORIAS_CAPTION[categoria]
-    carrossel_id = criar_carrossel(container_ids, caption)
-    print(f"  Carrossel ID: {carrossel_id} — aguardando FINISHED...")
-    aguardar_container_pronto(carrossel_id)
-    print(f"  ✅ Carrossel pronto")
+        # Criar carrossel
+        print("\n📦 PASSO 3: Criando carrossel")
+        if args.formato == "glossario":
+            pasta_json = Path(__file__).parent / "generated" / "reels"
+            arq = pasta_json / f"{hoje}_{categoria}_glossario.json"
+            if arq.exists():
+                with open(arq, encoding="utf-8") as f:
+                    glossario = json.load(f)
+            else:
+                glossario = {}
+            caption = glossario.get("legenda_instagram") or CATEGORIAS_CAPTION.get(categoria, "")
+        else:
+            caption = CATEGORIAS_CAPTION[categoria]
+        carrossel_id = criar_carrossel(container_ids, caption)
+        print(f"  Carrossel ID: {carrossel_id} — aguardando FINISHED...")
+        aguardar_container_pronto(carrossel_id)
+        print(f"  ✅ Carrossel pronto")
 
-    # Publicar
-    print("\n🚀 PASSO 4: Publicando no @dra.julga")
-    media_id = publicar_carrossel(carrossel_id)
+        # Publicar
+        print("\n🚀 PASSO 4: Publicando no @dra.julga")
+        media_id = publicar_carrossel(carrossel_id)
+    finally:
+        if args.output_id:
+            sys.stdout = sys.__stdout__  # restaura stdout real
 
     if args.output_id:
-        sys.stdout = sys.__stdout__  # restaura stdout real
         print(media_id)
         return
 
