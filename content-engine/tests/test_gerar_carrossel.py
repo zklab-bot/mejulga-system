@@ -52,3 +52,9 @@ def test_slide_glossario_conteudo_retorna_imagem(tmp_path):
     img = gc.slide_glossario_conteudo("DEFINIÇÃO", "Texto de teste aqui.", 2, 6)
     assert isinstance(img, Image.Image)
     assert img.size == (1080, 1080)
+
+
+def test_gerar_slides_glossario_dict_vazio_nao_levanta(tmp_path):
+    """Glossário com campos vazios não deve levantar exceção."""
+    slides = gc.gerar_slides_glossario({}, tmp_path, "2026-01-01")
+    assert len(slides) == 6
