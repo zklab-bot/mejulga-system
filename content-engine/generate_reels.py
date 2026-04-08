@@ -252,7 +252,7 @@ EXEMPLO CORRETO (categoria: trabalho):
 {{
   "cenas": [
     {{"numero": 1, "texto": "Processo TRA-007/26. Réu: você. Alegação: trabalha demais.", "texto_slide": "Processo TRA-007/26.\\nRéu: você."}},
-    {{"numero": 2, "texto": "Quarta-feira, reunião do Teams. Câmera desligada. Quarto vídeo do Instagram aberto em paralelo.", "texto_slide": "Na reunião do Teams, câmera desligada.\\nVocê estava no quarto vídeo do Instagram."}},
+    {{"numero": 2, "texto": "Reunião do Teams, câmera desligada. 4 vídeos do Instagram assistidos durante a call.", "texto_slide": "Na reunião do Teams, câmera desligada.\\n4 vídeos do Instagram. Durante a call."}},
     {{"numero": 3, "texto": "Você estava no feed. Tempo suficiente para assistir O Urso inteiro, se quisesse.", "texto_slide": "Tempo de tela na reunião: zero.\\nTempo no Instagram: suficiente para um episódio inteiro."}},
     {{"numero": 4, "texto": "Agravante: passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
     {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},

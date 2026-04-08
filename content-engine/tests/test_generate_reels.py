@@ -233,7 +233,7 @@ def test_system_prompt_contem_tipos_de_ancoragem():
 
 def test_system_prompt_proibe_ancoragem_consecutiva():
     """SYSTEM_PROMPT deve mencionar a proibição de tipos consecutivos."""
-    assert "consecutiv" in gr.SYSTEM_PROMPT.lower() or "duas cenas seguidas" in gr.SYSTEM_PROMPT
+    assert "duas cenas seguidas" in gr.SYSTEM_PROMPT
 
 
 def test_system_prompt_contem_angulos_narrativos():
