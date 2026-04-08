@@ -188,13 +188,16 @@ def publicar_carrossel(carrossel_id: str) -> str:
     raise RuntimeError(f"media_publish sem id na resposta: {data}")
 
 
-def localizar_slides(categoria: str, hoje: str) -> list:
+def localizar_slides(categoria: str, hoje: str, formato: str = "carrossel") -> list:
     """Localiza os 6 slides gerados."""
     pasta = Path(__file__).parent / "generated" / "reels"
-    slides = sorted(pasta.glob(f"{hoje}_{categoria}_slide_*.png"))
+    if formato == "glossario":
+        slides = sorted(pasta.glob(f"{hoje}_{categoria}_glossario_slide_*.png"))
+    else:
+        slides = sorted(pasta.glob(f"{hoje}_{categoria}_slide_*.png"))
     if not slides:
         raise FileNotFoundError(
-            f"Nenhum slide encontrado em {pasta} para {hoje}_{categoria}"
+            f"Nenhum slide encontrado em {pasta} para {hoje}_{categoria} [{formato}]"
         )
     return slides
 
@@ -206,6 +209,9 @@ def main():
     parser.add_argument("--data", default=None)
     parser.add_argument("--output-id", action="store_true",
                         help="Imprime apenas o media_id e encerra")
+    parser.add_argument("--formato", default="carrossel",
+                        choices=["carrossel", "glossario"],
+                        help="Tipo de post a publicar")
     args = parser.parse_args()
 
     # Em modo --output-id, redireciona todos os logs para stderr
@@ -224,7 +230,7 @@ def main():
     print(f"\n🎠 Publicando carrossel — {categoria} — {hoje}\n")
 
     # Localiza slides
-    slides = localizar_slides(categoria, hoje)
+    slides = localizar_slides(categoria, hoje, args.formato)
     print(f"  📂 {len(slides)} slides encontrados")
 
     # Upload de cada slide para catbox.moe
@@ -249,7 +255,14 @@ def main():
 
     # Criar carrossel
     print("\n📦 PASSO 3: Criando carrossel")
-    caption = CATEGORIAS_CAPTION[categoria]
+    if args.formato == "glossario":
+        import json
+        pasta_json = Path(__file__).parent / "generated" / "reels"
+        arq = pasta_json / f"{hoje}_{categoria}_glossario.json"
+        glossario = json.load(open(arq, encoding="utf-8")) if arq.exists() else {}
+        caption = glossario.get("legenda_instagram") or CATEGORIAS_CAPTION.get(categoria, "")
+    else:
+        caption = CATEGORIAS_CAPTION[categoria]
     carrossel_id = criar_carrossel(container_ids, caption)
     print(f"  Carrossel ID: {carrossel_id} — aguardando FINISHED...")
     aguardar_container_pronto(carrossel_id)

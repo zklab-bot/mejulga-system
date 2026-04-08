@@ -13,6 +13,10 @@ on:
         description: 'Categoria do post'
         required: false
         default: ''
+      formato:
+        description: 'Formato do post (carrossel ou glossario)'
+        required: false
+        default: ''
 
 concurrency:
   group: daily-post
@@ -47,9 +51,12 @@ jobs:
           IDX=$(( (DIA - 1) % 7 ))
 
           MANUAL="${{ github.event.inputs.categoria }}"
+          MANUAL_FMT="${{ github.event.inputs.formato }}"
           if [ -n "$MANUAL" ]; then
             echo "categoria=$MANUAL" >> $GITHUB_OUTPUT
-            echo "Categoria (manual): $MANUAL"
+            FMT="${MANUAL_FMT:-carrossel}"
+            echo "formato=$FMT" >> $GITHUB_OUTPUT
+            echo "Categoria (manual): $MANUAL | Formato: $FMT"
             exit 0
           fi
 
@@ -66,14 +73,28 @@ jobs:
           else                          CATEGORIA="${SLOT_E[$IDX]}"
           fi
 
+          # Glossário: quarta-feira (DIA=3) no slot 23h UTC
+          if [ "$DIA" = "3" ] && [ "$HORA" = "23" ]; then
+            FORMATO="glossario"
+          else
+            FORMATO="carrossel"
+          fi
+
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
-          echo "Categoria (slot ${HORA}h UTC): $CATEGORIA"
+          echo "formato=$FORMATO" >> $GITHUB_OUTPUT
+          echo "Categoria (slot ${HORA}h UTC): $CATEGORIA | Formato: $FORMATO"
 
       - name: Verificar duplicata
         id: dedup
         run: |
           HOJE=$(date -u +"%Y-%m-%d")
-          CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
+          FORMATO="${{ steps.categoria.outputs.formato }}"
+          if [ "$FORMATO" = "glossario" ]; then
+            CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}_glossario"
+          else
+            CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
+          fi
+          echo "chave=$CHAVE" >> $GITHUB_OUTPUT
           STATE="content-engine/generated/engagement_state.json"
 
           if [ ! -f "$STATE" ]; then
@@ -95,11 +116,11 @@ jobs:
 
       - name: Gerar roteiro
         if: steps.dedup.outputs.skip != 'true'
-        run: cd content-engine && python generate_reels.py --categoria ${{ steps.categoria.outputs.categoria }} --sem_audio
+        run: cd content-engine && python generate_reels.py --categoria ${{ steps.categoria.outputs.categoria }} --formato ${{ steps.categoria.outputs.formato }} --sem_audio
 
       - name: Gerar slides do carrossel
         if: steps.dedup.outputs.skip != 'true'
-        run: cd content-engine && python gerar_carrossel.py --categoria ${{ steps.categoria.outputs.categoria }}
+        run: cd content-engine && python gerar_carrossel.py --categoria ${{ steps.categoria.outputs.categoria }} --formato ${{ steps.categoria.outputs.formato }}
 
       - name: Publicar carrossel no Instagram
         if: steps.dedup.outputs.skip != 'true'
@@ -109,6 +130,7 @@ jobs:
           HORA=$(date -u +"%Hh%M")
           MEDIA_ID=$(python post_carrossel_instagram.py \
             --categoria ${{ steps.categoria.outputs.categoria }} \
+            --formato ${{ steps.categoria.outputs.formato }} \
             --output-id)
           echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
           echo "hora=$HORA" >> $GITHUB_OUTPUT
@@ -127,29 +149,35 @@ jobs:
       - name: Registrar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
-          HOJE=$(date -u +"%Y-%m-%d")
-          CHAVE="${HOJE}_${{ steps.categoria.outputs.categoria }}"
+          CHAVE="${{ steps.dedup.outputs.chave }}"
           CHAVE="$CHAVE" python3 -c "import json,os; f='content-engine/generated/engagement_state.json'; d=json.load(open(f)) if os.path.exists(f) else {}; p=d.setdefault('posts_published',[]); c=os.environ['CHAVE']; c not in p and p.append(c); os.makedirs(os.path.dirname(f),exist_ok=True); json.dump(d,open(f,'w'),ensure_ascii=False,indent=2); print('Registrado:',c)"
 
       - name: Notificar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
         run: |
           cd content-engine
-          TITULO=$(CAT="${{ steps.categoria.outputs.categoria }}" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
+          HOJE=$(date -u +"%Y-%m-%d")
+          CAT="${{ steps.categoria.outputs.categoria }}"
+          FORMATO="${{ steps.categoria.outputs.formato }}"
+          if [ "$FORMATO" = "glossario" ]; then
+            TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_glossario.json'); print(json.load(open(f[0])).get('termo',c) if f else c)")
+          else
+            TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
+          fi
           python -m notify send_post_published \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
+            --categoria "$CAT" \
             --titulo "$TITULO" \
             --hora "${{ steps.publicar.outputs.hora }}" \
             --media_id ${{ steps.publicar.outputs.media_id }}
 
       - name: Enviar votacao no Telegram
-        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != ''
+        if: steps.dedup.outputs.skip != 'true' && steps.publicar.outputs.media_id != '' && steps.categoria.outputs.formato == 'carrossel'
         continue-on-error: true
         run: |
           cd content-engine
           HOJE=$(date -u +"%Y-%m-%d")
           CAT="${{ steps.categoria.outputs.categoria }}"
-          CHAVE="${HOJE}_${CAT}"
+          CHAVE="${{ steps.dedup.outputs.chave }}"
           TIPO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('tipo_veredicto','A') if f else 'A')")
           TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
           CRIME=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('crime','') if f else '')")
