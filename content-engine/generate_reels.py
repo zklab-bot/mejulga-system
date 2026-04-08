@@ -154,9 +154,15 @@ VOCABULÁRIO PERMITIDO (usar com parcimônia):
 réu/ré, autos, prova, agravante, atenuante negado, reincidência, pena, sentença, culpado, trânsito em julgado, sem apelação, flagrante, dolo
 
 REGRA DA ESPECIFICIDADE — obrigatório:
-Toda cena precisa de pelo menos UM número, horário, nome de app/plataforma, ou dado concreto.
-❌ "fica muito tempo no celular"
-✅ "23h47. Décimo quarto vídeo de um cachorro que você não conhece."
+Toda cena precisa de pelo menos UM dado de ancoragem. Varie o TIPO — nunca o mesmo tipo em duas cenas seguidas:
+- HORÁRIO: "23h47", "terça às 14h37"
+- QUANTIDADE: "14 vezes", "R$ 47,90", "3 semanas"
+- PLATAFORMA/OBJETO: "no Stories", "Google Sheets", "grupo do trabalho"
+- CITAÇÃO EXATA (fictícia): "'tô chegando' — quarta vez seguida"
+- COMPARAÇÃO ABSURDA: "tempo suficiente para assistir O Urso inteiro"
+- COMPORTAMENTO MENSURADO: "viu stories de 8 pessoas, respondeu zero"
+❌ Cena 2: horário | Cena 3: horário | Cena 4: horário  (monotonia proibida)
+✅ Cena 2: horário | Cena 3: quantidade | Cena 4: comportamento mensurado
 
 REGRA DA ESCALADA — obrigatório:
 Cena 3 deve ser mais específica e absurda que Cena 2.
@@ -173,6 +179,13 @@ NÃO é lista de fatos soltos. É uma sentença acusatória fluida que inclui o 
 
 REGRA DO VEREDICTO PRINTÁVEL — obrigatório:
 Cena 5 deve ter no máximo 20 palavras. É a frase que vai virar print e ser mandada no grupo.
+
+ÂNGULOS NARRATIVOS — varie por cena, nunca o mesmo ângulo consecutivo:
+- FORENSE: cataloga como perito. "Examinados os registros: 47 mensagens, zero respostas."
+- SOCIOLÓGICO: padrão comportamental. "Brasileiro não termina. Ele some até o outro entender."
+- COMPARATIVO: absurdo equivalente. "Suficiente para assistir O Urso do início ao fim."
+- DOCUMENTAL: lê do processo. "Consta nos autos: 3 stories postados durante o vácuo."
+- RETROSPECTIVO: começa no desfecho. "O processo começa na sexta. Ou no mês passado."
 
 REGRA: Responda SOMENTE com JSON válido, sem texto fora dele."""
 
@@ -239,8 +252,8 @@ EXEMPLO CORRETO (categoria: trabalho):
 {{
   "cenas": [
     {{"numero": 1, "texto": "Processo TRA-007/26. Réu: você. Alegação: trabalha demais.", "texto_slide": "Processo TRA-007/26.\\nRéu: você."}},
-    {{"numero": 2, "texto": "Quarta-feira, 14h37. Reunião do Teams. Câmera desligada.", "texto_slide": "Na reunião do Teams, câmera desligada.\\nVocê estava no quarto vídeo do Instagram."}},
-    {{"numero": 3, "texto": "Você estava no quarto vídeo do feed falando 'tô aqui' a cada 8 minutos.", "texto_slide": "Enquanto fingia trabalhar,\\ndigitou 'tô aqui' 11 vezes. O feed não perdoou."}},
+    {{"numero": 2, "texto": "Quarta-feira, reunião do Teams. Câmera desligada. Quarto vídeo do Instagram aberto em paralelo.", "texto_slide": "Na reunião do Teams, câmera desligada.\\nVocê estava no quarto vídeo do Instagram."}},
+    {{"numero": 3, "texto": "Você estava no feed. Tempo suficiente para assistir O Urso inteiro, se quisesse.", "texto_slide": "Tempo de tela na reunião: zero.\\nTempo no Instagram: suficiente para um episódio inteiro."}},
     {{"numero": 4, "texto": "Agravante: passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
     {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},
     {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}

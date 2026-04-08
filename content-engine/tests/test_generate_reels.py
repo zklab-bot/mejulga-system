@@ -223,3 +223,25 @@ def test_sorteio_veredicto_usa_post_details(monkeypatch):
     details = _post_details_com_notas([5, 5, 5], [1, 1, 1], [1, 1, 1])
     resultados = [gr._sorteio_veredicto(details) for _ in range(50)]
     assert resultados.count("A") > 30  # alta concentração em A
+
+
+def test_system_prompt_contem_tipos_de_ancoragem():
+    """SYSTEM_PROMPT deve listar os 6 tipos de ancoragem."""
+    for tipo in ["HORÁRIO", "QUANTIDADE", "PLATAFORMA", "CITAÇÃO", "COMPARAÇÃO", "COMPORTAMENTO"]:
+        assert tipo in gr.SYSTEM_PROMPT, f"SYSTEM_PROMPT não contém tipo de ancoragem: {tipo}"
+
+
+def test_system_prompt_proibe_ancoragem_consecutiva():
+    """SYSTEM_PROMPT deve mencionar a proibição de tipos consecutivos."""
+    assert "consecutiv" in gr.SYSTEM_PROMPT.lower() or "duas cenas seguidas" in gr.SYSTEM_PROMPT
+
+
+def test_system_prompt_contem_angulos_narrativos():
+    """SYSTEM_PROMPT deve conter a seção de ângulos narrativos."""
+    assert "ÂNGULOS NARRATIVOS" in gr.SYSTEM_PROMPT
+
+
+def test_system_prompt_angulos_tem_exemplos():
+    """ÂNGULOS NARRATIVOS deve listar pelo menos FORENSE e SOCIOLÓGICO."""
+    assert "FORENSE" in gr.SYSTEM_PROMPT
+    assert "SOCIOLÓGICO" in gr.SYSTEM_PROMPT
