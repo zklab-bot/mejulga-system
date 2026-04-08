@@ -333,7 +333,7 @@ def slide_intro(roteiro: dict, numero: int, total: int) -> Image.Image:
     return img
 
 
-def slide_cena(texto: str, numero_cena: int, numero_slide: int, total: int) -> Image.Image:
+def slide_cena(texto: str, numero_slide: int, total: int) -> Image.Image:
     img, draw = base_slide("cena_bg.png")
     cx = LARGURA // 2
 
@@ -342,24 +342,7 @@ def slide_cena(texto: str, numero_cena: int, numero_slide: int, total: int) -> I
     draw.text((cx, 28), f"{numero_slide}/{total}", font=fonte_num,
               fill=CINZA_MEDIO, anchor="mt")
 
-    # Badge label — pill com borda roxa sobre branco
-    label = LABELS_EVIDENCIA[(numero_cena - 1) % len(LABELS_EVIDENCIA)]
-    fonte_lbl  = encontrar_fonte(30, bold=True)
-    lbl_bbox   = draw.textbbox((0, 0), label, font=fonte_lbl)
-    lbl_w      = lbl_bbox[2] - lbl_bbox[0]
-    lbl_h      = lbl_bbox[3] - lbl_bbox[1]
-    pad_h, pad_v = 28, 12
-    draw.rounded_rectangle(
-        [cx - lbl_w // 2 - pad_h, 78 - lbl_h // 2 - pad_v,
-         cx + lbl_w // 2 + pad_h, 78 + lbl_h // 2 + pad_v],
-        radius=24, fill=CINZA_SUAVE, outline=ROXO_VIBRANTE, width=2
-    )
-    draw.text((cx, 78), label, font=fonte_lbl, fill=ROXO_VIBRANTE, anchor="mm")
-
-    # Linha divisória sutil abaixo da label
-    draw.rectangle([80, 122, LARGURA - 80, 124], fill=CINZA_SUAVE)
-
-    # Texto da cena — centralizado com mais espaço disponível
+    # Texto da cena — ocupa todo o slide sem label acima
     fonte_texto = encontrar_fonte(62)
     palavras    = texto.split()
     linhas      = []
@@ -381,7 +364,7 @@ def slide_cena(texto: str, numero_cena: int, numero_slide: int, total: int) -> I
 
     n          = len(linhas)
     line_h     = 88
-    zona_top   = 140
+    zona_top   = 80
     zona_bot   = ALTURA - 100
     altura_txt = n * line_h
     y = zona_top + (zona_bot - zona_top - altura_txt) // 2
@@ -768,14 +751,14 @@ def main():
     for i, cena in enumerate(cenas):
         n = i + 2
         print(f"  Slide {n}/6 — Cena {i + 1}")
-        img = slide_cena(cena.get("texto_slide") or cena["texto"], i + 1, n, total_slides)
+        img = slide_cena(cena.get("texto_slide") or cena["texto"], n, total_slides)
         p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
         img.save(str(p))
         slides.append(p)
 
     for i in range(len(cenas), 4):
         n   = i + 2
-        img = slide_cena("...", i + 1, n, total_slides)
+        img = slide_cena("...", n, total_slides)
         p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
         img.save(str(p))
         slides.append(p)

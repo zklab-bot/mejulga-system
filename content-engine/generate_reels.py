@@ -265,13 +265,11 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
 
     prompt = f"""Crie um roteiro de carrossel para a Dra. Julga sobre a categoria "{info['label']}".
 
-EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala, pode ter conectores) e `texto_slide` (card visual — frase acusatória completa na voz da Dra. Julga; funciona sozinha sem o áudio).
+EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala) e `texto_slide` (card visual — frase acusatória completa na voz da Dra. Julga; funciona sozinha sem o áudio. Sem labels, sem títulos, sem "PROVA Nº X").
 
 ESTRUTURA OBRIGATÓRIA:
-- Cena 1 — ABERTURA DO PROCESSO: flagrante direto ou "Processo {numero_processo}. Réu: você." Nunca "Gente,". Começa com dado concreto.
-- Cena 2 — INTIMAÇÃO: conduta fria com número, horário ou dado específico.
-- Cena 3 — PRIMEIRA PROVA: detalhe mais absurdo e específico que a Cena 2. O slide é uma sentença acusatória completa — inclui o contexto que torna a prova engraçada.
-- Cena 4 — AGRAVANTE: comportamento que contradiz a desculpa implícita da Cena 2. O texto começa com "Agravante:" ou "Pior:".
+- Cena 1 — ABERTURA: flagrante direto ou "Processo {numero_processo}. Réu: você." Nunca "Gente,". Começa com dado concreto.
+- Cenas 2, 3 e 4 — ESCALADA: três observações que aprofundam o mesmo padrão comportamental. Cada uma mais específica e absurda que a anterior. O slide de cada uma é uma acusação completa que o leitor entende sozinho.
 - Cena 5 — VEREDICTO: {instrucao_veredicto}
 - Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
 
@@ -281,18 +279,18 @@ EXEMPLO CORRETO (categoria: trabalho):
     {{"numero": 1, "texto": "Processo TRA-007/26. Réu: você. Alegação: trabalha demais.", "texto_slide": "Processo TRA-007/26.\\nRéu: você."}},
     {{"numero": 2, "texto": "Reunião do Teams, câmera desligada. 4 vídeos do Instagram assistidos durante a call.", "texto_slide": "Na reunião do Teams, câmera desligada.\\n4 vídeos do Instagram. Durante a call."}},
     {{"numero": 3, "texto": "Você estava no feed. Tempo suficiente para assistir O Urso inteiro, se quisesse.", "texto_slide": "Tempo de tela na reunião: zero.\\nTempo no Instagram: suficiente para um episódio inteiro."}},
-    {{"numero": 4, "texto": "Agravante: passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
+    {{"numero": 4, "texto": "Passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
     {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},
     {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
   ]
 }}
 
-ANTI-EXEMPLO (não faça isso — categoria: dinheiro):
-- ❌ texto cena 1: "Gente, ele parcelou a pizza" (começa com "Gente,")
-- ❌ texto cena 5: "Diagnóstico: síndrome do endividamento crônico" (jargão médico)
+ANTI-EXEMPLO (não faça isso — categoria: amor):
+- ❌ texto cena 1: "Gente, ele não respondeu" (começa com "Gente,")
+- ❌ texto cena 5: "Diagnóstico: síndrome do apego ansioso" (jargão médico)
 - ❌ texto_slide cena 2 igual ao texto cena 2 com quebra de linha (redundância)
-- ❌ texto_slide cena 3: "R$ 47,90.\nParcelado em 12x." (fragmentos — não acusam ninguém sozinhos)
-- ✅ texto_slide cena 3: "Parcelou R$ 47,90 em 12 vezes.\nO boleto ainda está chegando." (sentença acusatória completa)
+- ❌ texto_slide cena 3: "Domingo.\\nNenhuma mensagem." (fragmentos — não acusam ninguém sozinhos)
+- ✅ texto_slide cena 3: "Viu o story às 22h03.\\nNão respondeu 9 mensagens. No mesmo dia." (sentença acusatória completa)
 
 Responda SOMENTE com este JSON:
 {{
