@@ -142,6 +142,33 @@ def _validar_roteiro(roteiro: dict) -> str | None:
     return None
 
 
+_CAMPOS_GLOSSARIO = [
+    "formato_post", "categoria", "termo", "pronuncia", "classe_gramatical",
+    "definicao", "manifestacao", "nao_confundir", "frase_exemplo", "veredicto",
+]
+
+
+def _validar_glossario(glossario: dict) -> str | None:
+    """Valida glossário gerado. Retorna None se válido, mensagem de erro se inválido."""
+    for campo in _CAMPOS_GLOSSARIO:
+        if not glossario.get(campo):
+            return f"Campo '{campo}' ausente ou vazio no glossário."
+
+    for palavra in ("diagnóstico", "síndrome", "transtorno", "patologia"):
+        for campo in ("definicao", "manifestacao", "nao_confundir"):
+            if palavra in glossario.get(campo, "").lower():
+                return f"Campo '{campo}' contém '{palavra}' — usar vocabulário jurídico, não médico."
+
+    palavras_veredicto = len(glossario.get("veredicto", "").split())
+    if palavras_veredicto > 25:
+        return (
+            f"Veredicto tem {palavras_veredicto} palavras — máximo é 25. "
+            "Encurtar para ficar printável."
+        )
+
+    return None
+
+
 SYSTEM_PROMPT = """Você é a Dra. Julga — juíza fictícia que conduz processos contra comportamentos absurdos do cotidiano brasileiro. Observa, coleta provas e profere veredictos. Voz: fria, forense, levemente entediada de já ter visto tudo. Nunca cruel.
 
 TOM PROIBIDO:
@@ -405,6 +432,80 @@ def salvar_roteiro(roteiro: dict, pasta: Path):
         f.write(f"SUGESTÃO DE MÚSICA: {roteiro.get('sugestao_musica', '')}\n")
 
     return arquivo_json, arquivo_txt
+
+
+# ─── Glossário da Dra. Julga ──────────────────────────────────────────────────
+
+_GLOSSARIO_USER_PROMPT = """Crie uma entrada do Glossário da Dra. Julga para a categoria "{label}".
+
+Invente um termo em português que nomeia um comportamento relacionalmente problemático mas muito comum nessa categoria.
+O termo deve soar "técnico" mas ser completamente fictício — combine palavras reais de forma absurda (ex: "afetofobia seletiva", "procrastinação afetiva crônica", "ghosting por osmose").
+
+Responda SOMENTE com este JSON:
+{{
+  "formato_post": "glossario",
+  "categoria": "{categoria}",
+  "termo": "o termo inventado em letras minúsculas",
+  "pronuncia": "sí·la·bas  se·pa·ra·das  por  ponto·médio  (use espaço duplo entre palavras)",
+  "classe_gramatical": "substantivo feminino | substantivo masculino | adjetivo",
+  "definicao": "definição de 1-2 frases: o que é, com ironia fria. Máx 30 palavras.",
+  "manifestacao": "como se manifesta na prática: 2-3 comportamentos específicos em frases curtas. Máx 35 palavras.",
+  "nao_confundir": "com o que não confundir: diferença afiada em 2 frases. Máx 25 palavras.",
+  "frase_exemplo": "uma frase que alguém diria quando sofre isso. Em primeira pessoa. Máx 20 palavras.",
+  "veredicto": "veredicto da Dra. Julga em 1-2 frases. Máx 25 palavras. Inclui 'pena:' com punição irônica.",
+  "legenda_instagram": "legenda com o termo + definição resumida + hashtags (máx 150 chars)",
+  "sugestao_musica": "estilo musical sugerido"
+}}"""
+
+
+def gerar_glossario(categoria: str, pasta: Path = None) -> dict:
+    """Gera entrada do Glossário da Dra. Julga para uma categoria."""
+    if pasta is None:
+        pasta = Path(__file__).parent / "generated" / "reels"
+
+    info = CATEGORIAS_INFO.get(categoria, {"label": categoria, "emoji": "⚖️"})
+    prompt = _GLOSSARIO_USER_PROMPT.format(categoria=categoria, label=info["label"])
+
+    prompt_atual = prompt
+    for tentativa in range(1, 3):
+        resposta = claude_client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1000,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt_atual}]
+        )
+
+        texto = resposta.content[0].text.strip()
+        texto = texto.replace("```json", "").replace("```", "").strip()
+        try:
+            glossario = json.loads(texto)
+        except json.JSONDecodeError as e:
+            print(f"⚠️  Tentativa {tentativa}/2 — JSON inválido: {e}")
+            if tentativa < 2:
+                prompt_atual = prompt + "\n\nATENÇÃO — resposta anterior não era JSON válido. Responda SOMENTE com JSON."
+            glossario = {}
+            continue
+
+        erro = _validar_glossario(glossario)
+        if erro is None:
+            return glossario
+
+        print(f"⚠️  Tentativa {tentativa}/2 — glossário rejeitado: {erro}")
+        if tentativa < 2:
+            prompt_atual = prompt + f"\n\nATENÇÃO — resposta anterior foi rejeitada:\n{erro}\nCorrija e responda com JSON válido."
+
+    print("⚠️  Usando glossário da tentativa 2 sem aprovação — verificar manualmente.")
+    return glossario
+
+
+def salvar_glossario(glossario: dict, pasta: Path) -> Path:
+    """Salva glossário em JSON. Retorna o Path do arquivo."""
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    categoria = glossario.get("categoria", "geral")
+    arquivo = pasta / f"{hoje}_{categoria}_glossario.json"
+    with open(arquivo, "w", encoding="utf-8") as f:
+        json.dump(glossario, f, ensure_ascii=False, indent=2)
+    return arquivo
 
 
 # ─── Main ──────────────────────────────────────────────────────────────────────

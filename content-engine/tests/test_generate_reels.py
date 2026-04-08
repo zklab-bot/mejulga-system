@@ -245,3 +245,75 @@ def test_system_prompt_angulos_tem_exemplos():
     """ÂNGULOS NARRATIVOS deve listar pelo menos FORENSE e SOCIOLÓGICO."""
     assert "FORENSE" in gr.SYSTEM_PROMPT
     assert "SOCIOLÓGICO" in gr.SYSTEM_PROMPT
+
+
+# ── Glossário ──────────────────────────────────────────────────────────────────
+
+def _glossario_valido():
+    """Fixture: glossário mínimo válido para testes."""
+    return {
+        "formato_post": "glossario",
+        "categoria": "amor",
+        "termo": "afetofobia seletiva",
+        "pronuncia": "a·fe·to·fo·bi·a  se·le·ti·va",
+        "classe_gramatical": "substantivo feminino",
+        "definicao": "Incapacidade de demonstrar afeto — mas só com quem gosta de verdade.",
+        "manifestacao": "Sumiços estratégicos. Mensagens frias logo depois de noites boas.",
+        "nao_confundir": "Não confundir com timidez. Tímido não some. Tímido demora.",
+        "frase_exemplo": "Ele só é assim comigo. Com os outros ele é super carinhoso.",
+        "veredicto": "Culpado de fugir do que mais quer. Pena: ficar com quem não teme.",
+        "legenda_instagram": "#draJulga #glossario",
+        "sugestao_musica": "lo-fi introspectivo",
+    }
+
+
+def test_validar_glossario_valido_retorna_none():
+    assert gr._validar_glossario(_glossario_valido()) is None
+
+
+def test_validar_glossario_rejeita_campo_ausente():
+    g = _glossario_valido()
+    del g["definicao"]
+    resultado = gr._validar_glossario(g)
+    assert resultado is not None
+    assert "definicao" in resultado
+
+
+def test_validar_glossario_rejeita_jargao_medico():
+    g = _glossario_valido()
+    g["definicao"] = "Síndrome do abandono afetivo crônico."
+    resultado = gr._validar_glossario(g)
+    assert resultado is not None
+    assert "síndrome" in resultado.lower()
+
+
+def test_validar_glossario_rejeita_veredicto_longo():
+    g = _glossario_valido()
+    g["veredicto"] = "Culpado de uma série de comportamentos extremamente duvidosos que demonstram total falta de capacidade de amar alguém de verdade sem fugir desesperadamente de tudo que é bom e genuíno na vida."
+    resultado = gr._validar_glossario(g)
+    assert resultado is not None
+    assert "veredicto" in resultado.lower()
+
+
+def test_gerar_glossario_chama_api_e_retorna_dict(monkeypatch, tmp_path):
+    glossario_mock = _glossario_valido()
+
+    def mock_create(**kwargs):
+        mock_resp = MagicMock()
+        mock_resp.content[0].text = json.dumps(glossario_mock)
+        return mock_resp
+
+    monkeypatch.setattr(gr.claude_client.messages, "create", mock_create)
+    resultado = gr.gerar_glossario("amor", pasta=tmp_path)
+
+    assert resultado["formato_post"] == "glossario"
+    assert resultado["termo"] == "afetofobia seletiva"
+
+
+def test_salvar_glossario_cria_json(tmp_path):
+    g = _glossario_valido()
+    arquivo = gr.salvar_glossario(g, tmp_path)
+    assert arquivo.exists()
+    with open(arquivo, encoding="utf-8") as f:
+        data = json.load(f)
+    assert data["termo"] == g["termo"]
