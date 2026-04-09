@@ -87,23 +87,35 @@ CATEGORIAS_CAPTION = {
 }
 
 
-def upload_catbox(caminho_img: Path) -> str:
+def upload_catbox(caminho_img: Path, max_tentativas: int = 3) -> str:
     """Converte para JPEG, faz upload para catbox.moe e retorna URL pública."""
     img = Image.open(caminho_img).convert("RGB")
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=95)
-    buf.seek(0)
-    resp = requests.post(
-        "https://catbox.moe/user/api.php",
-        data={"reqtype": "fileupload"},
-        files={"fileToUpload": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    url = resp.text.strip()
-    if not url.startswith("https://"):
-        raise RuntimeError(f"Catbox retornou resposta inesperada: {url}")
-    return url
+
+    ultimo_erro = None
+    for tentativa in range(1, max_tentativas + 1):
+        buf.seek(0)
+        try:
+            resp = requests.post(
+                "https://catbox.moe/user/api.php",
+                data={"reqtype": "fileupload"},
+                files={"fileToUpload": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            url = resp.text.strip()
+            if url.startswith("https://"):
+                return url
+            ultimo_erro = f"Catbox retornou resposta inesperada: {url}"
+        except Exception as e:
+            ultimo_erro = str(e)
+
+        if tentativa < max_tentativas:
+            print(f"  ⚠️  Tentativa {tentativa}/{max_tentativas} falhou: {ultimo_erro} — aguardando 10s...")
+            time.sleep(10)
+
+    raise RuntimeError(f"Catbox falhou após {max_tentativas} tentativas. Último erro: {ultimo_erro}")
 
 
 def aguardar_container_pronto(container_id: str, max_tentativas: int = 20, intervalo: int = 5) -> None:
