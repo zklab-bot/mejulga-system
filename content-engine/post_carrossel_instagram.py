@@ -87,8 +87,8 @@ CATEGORIAS_CAPTION = {
 }
 
 
-def upload_catbox(caminho_img: Path, max_tentativas: int = 3) -> str:
-    """Converte para JPEG, faz upload para catbox.moe e retorna URL pública."""
+def upload_imagem(caminho_img: Path, max_tentativas: int = 3) -> str:
+    """Converte para JPEG, faz upload para telegra.ph e retorna URL pública."""
     img = Image.open(caminho_img).convert("RGB")
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=95)
@@ -98,24 +98,23 @@ def upload_catbox(caminho_img: Path, max_tentativas: int = 3) -> str:
         buf.seek(0)
         try:
             resp = requests.post(
-                "https://catbox.moe/user/api.php",
-                data={"reqtype": "fileupload"},
-                files={"fileToUpload": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
+                "https://telegra.ph/upload",
+                files={"file": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
                 timeout=30,
             )
             resp.raise_for_status()
-            url = resp.text.strip()
-            if url.startswith("https://"):
-                return url
-            ultimo_erro = f"Catbox retornou resposta inesperada: {url}"
+            data = resp.json()
+            if isinstance(data, list) and data and "src" in data[0]:
+                return "https://telegra.ph" + data[0]["src"]
+            ultimo_erro = f"Telegraph retornou resposta inesperada: {data}"
         except Exception as e:
             ultimo_erro = str(e)
 
         if tentativa < max_tentativas:
-            print(f"  ⚠️  Tentativa {tentativa}/{max_tentativas} falhou: {ultimo_erro} — aguardando 10s...")
-            time.sleep(10)
+            print(f"  ⚠️  Tentativa {tentativa}/{max_tentativas} falhou: {ultimo_erro} — aguardando 5s...")
+            time.sleep(5)
 
-    raise RuntimeError(f"Catbox falhou após {max_tentativas} tentativas. Último erro: {ultimo_erro}")
+    raise RuntimeError(f"Upload falhou após {max_tentativas} tentativas. Último erro: {ultimo_erro}")
 
 
 def aguardar_container_pronto(container_id: str, max_tentativas: int = 20, intervalo: int = 5) -> None:
@@ -248,11 +247,11 @@ def main():
         print(f"  📂 {len(slides)} slides encontrados")
 
         # Upload de cada slide para catbox.moe
-        print("\n📦 PASSO 1: Upload dos slides para catbox.moe")
+        print("\n📦 PASSO 1: Upload dos slides para telegra.ph")
         image_urls = []
         for i, slide in enumerate(slides):
             print(f"  ⬆️  Slide {i+1}/{len(slides)}: {slide.name}")
-            url = upload_catbox(slide)
+            url = upload_imagem(slide)
             image_urls.append(url)
             print(f"       ✅ {url}")
 
