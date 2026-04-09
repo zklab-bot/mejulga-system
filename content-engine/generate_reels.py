@@ -268,18 +268,17 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
 EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala) e `texto_slide` (card visual — frase acusatória completa na voz da Dra. Julga; funciona sozinha sem o áudio. Sem labels, sem títulos, sem "PROVA Nº X").
 
 ESTRUTURA OBRIGATÓRIA:
-- Cena 1 — ABERTURA: flagrante direto ou "Processo {numero_processo}. Réu: você." Nunca "Gente,". Começa com dado concreto.
-- Cenas 2, 3 e 4 — ESCALADA: três observações que aprofundam o mesmo padrão comportamental. Cada uma mais específica e absurda que a anterior. O slide de cada uma é uma acusação completa que o leitor entende sozinho.
+- Cenas 1, 2, 3 e 4 — ESCALADA: quatro observações sobre o mesmo padrão comportamental, cada uma mais específica e absurda que a anterior. A capa já mostra o processo e o título — NÃO repita "Processo X. Réu: você." aqui. Comece direto na primeira acusação, com dado concreto.
 - Cena 5 — VEREDICTO: {instrucao_veredicto}
 - Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
 
 EXEMPLO CORRETO (categoria: trabalho):
 {{
   "cenas": [
-    {{"numero": 1, "texto": "Processo TRA-007/26. Réu: você. Alegação: trabalha demais.", "texto_slide": "Processo TRA-007/26.\\nRéu: você."}},
-    {{"numero": 2, "texto": "Reunião do Teams, câmera desligada. 4 vídeos do Instagram assistidos durante a call.", "texto_slide": "Na reunião do Teams, câmera desligada.\\n4 vídeos do Instagram. Durante a call."}},
-    {{"numero": 3, "texto": "Você estava no feed. Tempo suficiente para assistir O Urso inteiro, se quisesse.", "texto_slide": "Tempo de tela na reunião: zero.\\nTempo no Instagram: suficiente para um episódio inteiro."}},
-    {{"numero": 4, "texto": "Passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
+    {{"numero": 1, "texto": "Câmera desligada. 4 vídeos do Instagram assistidos durante a call.", "texto_slide": "Câmera desligada na reunião.\\n4 vídeos do Instagram. Ao mesmo tempo."}},
+    {{"numero": 2, "texto": "Você estava no feed. Tempo suficiente para assistir O Urso inteiro, se quisesse.", "texto_slide": "Tempo de tela na reunião: zero.\\nTempo no Instagram: suficiente para um episódio inteiro."}},
+    {{"numero": 3, "texto": "Passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
+    {{"numero": 4, "texto": "Viu 8 stories depois da call. Não respondeu os 3 pings do gestor. Na mesma janela de tempo.", "texto_slide": "Viu 8 stories depois da call.\\nNão respondeu 3 pings do gestor. Mesma janela."}},
     {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},
     {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
   ]
