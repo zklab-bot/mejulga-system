@@ -28,7 +28,7 @@ env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+  TELEGRAM_CDN_CHAT_ID: ${{ secrets.TELEGRAM_CDN_CHAT_ID }}
 
 jobs:
   publicar:

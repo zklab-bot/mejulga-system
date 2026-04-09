@@ -19,9 +19,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
-IG_ACCOUNT_ID     = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
-IMGBB_API_KEY     = os.getenv("IMGBB_API_KEY")
+META_ACCESS_TOKEN    = os.getenv("META_ACCESS_TOKEN")
+IG_ACCOUNT_ID        = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
+TELEGRAM_BOT_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CDN_CHAT_ID = os.getenv("TELEGRAM_CDN_CHAT_ID")
 
 # Captions com Voice DNA da Dra. Julga.
 # Regras: frases curtas, declarativas, sem emoji no texto principal.
@@ -89,9 +90,9 @@ CATEGORIAS_CAPTION = {
 
 
 def upload_imagem(caminho_img: Path, max_tentativas: int = 3) -> str:
-    """Converte para JPEG, faz upload para ImgBB e retorna URL pública."""
-    if not IMGBB_API_KEY:
-        raise EnvironmentError("IMGBB_API_KEY não configurado no .env / secrets")
+    """Envia imagem ao canal CDN do Telegram e retorna URL pública via Bot API."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CDN_CHAT_ID:
+        raise EnvironmentError("TELEGRAM_BOT_TOKEN ou TELEGRAM_CDN_CHAT_ID não configurados")
 
     img = Image.open(caminho_img).convert("RGB")
     buf = io.BytesIO()
@@ -101,19 +102,31 @@ def upload_imagem(caminho_img: Path, max_tentativas: int = 3) -> str:
     for tentativa in range(1, max_tentativas + 1):
         buf.seek(0)
         try:
-            import base64
-            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            # Envia foto para o canal CDN
             resp = requests.post(
-                "https://api.imgbb.com/1/upload",
-                params={"key": IMGBB_API_KEY},
-                data={"image": b64},
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                data={"chat_id": TELEGRAM_CDN_CHAT_ID, "disable_notification": "true"},
+                files={"photo": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
                 timeout=30,
             )
             resp.raise_for_status()
             data = resp.json()
-            if data.get("success") and data.get("data", {}).get("url"):
-                return data["data"]["url"]
-            ultimo_erro = f"ImgBB retornou resposta inesperada: {data}"
+            if not data.get("ok"):
+                raise RuntimeError(f"Telegram sendPhoto falhou: {data}")
+
+            # Pega o file_id da maior resolução disponível
+            photos = data["result"]["photo"]
+            file_id = max(photos, key=lambda p: p.get("file_size", 0))["file_id"]
+
+            # Resolve para URL direta
+            resp2 = requests.get(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile",
+                params={"file_id": file_id},
+                timeout=15,
+            )
+            resp2.raise_for_status()
+            file_path = resp2.json()["result"]["file_path"]
+            return f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
         except Exception as e:
             ultimo_erro = str(e)
 
