@@ -235,6 +235,17 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
     numero_processo = _calcular_numero_processo(categoria, pasta)
     info = CATEGORIAS_INFO.get(categoria, {"label": categoria, "emoji": "⚖️"})
 
+    # Coleta títulos já usados para esta categoria — evita repetição
+    titulos_usados = []
+    for arq in sorted(pasta.glob(f"*_{categoria}_reels.json")):
+        try:
+            with open(arq, encoding="utf-8") as f:
+                titulo = json.load(f).get("titulo", "")
+            if titulo:
+                titulos_usados.append(titulo)
+        except Exception:
+            pass
+
     _INSTRUCOES_VEREDICTO = {
         "A": (
             'Cena 5 — SENTENÇA CURTA (Variação A):\n'
@@ -263,7 +274,12 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
     }
     instrucao_veredicto = _INSTRUCOES_VEREDICTO[tipo_veredicto]
 
-    prompt = f"""Crie um roteiro de carrossel para a Dra. Julga sobre a categoria "{info['label']}".
+    aviso_titulos = ""
+    if titulos_usados:
+        lista = "\n".join(f"- {t}" for t in titulos_usados)
+        aviso_titulos = f"\nTÍTULOS JÁ USADOS — não repita nem varie levemente, crie algo completamente diferente:\n{lista}\n"
+
+    prompt = f"""Crie um roteiro de carrossel para a Dra. Julga sobre a categoria "{info['label']}".{aviso_titulos}
 
 EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala) e `texto_slide` (card visual — frase acusatória completa na voz da Dra. Julga; funciona sozinha sem o áudio. Sem labels, sem títulos, sem "PROVA Nº X").
 
