@@ -21,6 +21,7 @@ load_dotenv()
 
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 IG_ACCOUNT_ID     = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
+IMGBB_API_KEY     = os.getenv("IMGBB_API_KEY")
 
 # Captions com Voice DNA da Dra. Julga.
 # Regras: frases curtas, declarativas, sem emoji no texto principal.
@@ -88,7 +89,10 @@ CATEGORIAS_CAPTION = {
 
 
 def upload_imagem(caminho_img: Path, max_tentativas: int = 3) -> str:
-    """Converte para JPEG, faz upload para telegra.ph e retorna URL pública."""
+    """Converte para JPEG, faz upload para ImgBB e retorna URL pública."""
+    if not IMGBB_API_KEY:
+        raise EnvironmentError("IMGBB_API_KEY não configurado no .env / secrets")
+
     img = Image.open(caminho_img).convert("RGB")
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=95)
@@ -97,16 +101,19 @@ def upload_imagem(caminho_img: Path, max_tentativas: int = 3) -> str:
     for tentativa in range(1, max_tentativas + 1):
         buf.seek(0)
         try:
+            import base64
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
             resp = requests.post(
-                "https://telegra.ph/upload",
-                files={"file": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
+                "https://api.imgbb.com/1/upload",
+                params={"key": IMGBB_API_KEY},
+                data={"image": b64},
                 timeout=30,
             )
             resp.raise_for_status()
             data = resp.json()
-            if isinstance(data, list) and data and "src" in data[0]:
-                return "https://telegra.ph" + data[0]["src"]
-            ultimo_erro = f"Telegraph retornou resposta inesperada: {data}"
+            if data.get("success") and data.get("data", {}).get("url"):
+                return data["data"]["url"]
+            ultimo_erro = f"ImgBB retornou resposta inesperada: {data}"
         except Exception as e:
             ultimo_erro = str(e)
 
