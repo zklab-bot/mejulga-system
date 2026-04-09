@@ -10,6 +10,7 @@ import io
 import sys
 import json
 import time
+import base64
 import argparse
 import requests
 from datetime import datetime
@@ -19,10 +20,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-META_ACCESS_TOKEN    = os.getenv("META_ACCESS_TOKEN")
-IG_ACCOUNT_ID        = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
-TELEGRAM_BOT_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CDN_CHAT_ID = os.getenv("TELEGRAM_CDN_CHAT_ID")
+META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
+IG_ACCOUNT_ID     = os.getenv("IG_ACCOUNT_ID") or os.getenv("INSTAGRAM_ACCOUNT_ID")
+GITHUB_TOKEN      = os.getenv("GITHUB_TOKEN")
+GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "zklab-bot/mejulga-system")
 
 # Captions com Voice DNA da Dra. Julga.
 # Regras: frases curtas, declarativas, sem emoji no texto principal.
@@ -90,43 +91,31 @@ CATEGORIAS_CAPTION = {
 
 
 def upload_imagem(caminho_img: Path, max_tentativas: int = 3) -> str:
-    """Envia imagem ao canal CDN do Telegram e retorna URL pública via Bot API."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CDN_CHAT_ID:
-        raise EnvironmentError("TELEGRAM_BOT_TOKEN ou TELEGRAM_CDN_CHAT_ID não configurados")
+    """Faz commit da imagem na pasta cdn/ do repo público e retorna URL via raw.githubusercontent.com."""
+    if not GITHUB_TOKEN:
+        raise EnvironmentError("GITHUB_TOKEN não disponível")
 
     img = Image.open(caminho_img).convert("RGB")
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=95)
+    content_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    filename = f"cdn/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{caminho_img.stem}.jpg"
 
     ultimo_erro = None
     for tentativa in range(1, max_tentativas + 1):
-        buf.seek(0)
         try:
-            # Envia foto para o canal CDN
-            resp = requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
-                data={"chat_id": TELEGRAM_CDN_CHAT_ID, "disable_notification": "true"},
-                files={"photo": (caminho_img.stem + ".jpg", buf, "image/jpeg")},
+            resp = requests.put(
+                f"https://api.github.com/repos/{GITHUB_REPOSITORY}/contents/{filename}",
+                headers={
+                    "Authorization": f"Bearer {GITHUB_TOKEN}",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+                json={"message": f"cdn: {caminho_img.stem}", "content": content_b64},
                 timeout=30,
             )
             resp.raise_for_status()
-            data = resp.json()
-            if not data.get("ok"):
-                raise RuntimeError(f"Telegram sendPhoto falhou: {data}")
-
-            # Pega o file_id da maior resolução disponível
-            photos = data["result"]["photo"]
-            file_id = max(photos, key=lambda p: p.get("file_size", 0))["file_id"]
-
-            # Resolve para URL direta
-            resp2 = requests.get(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile",
-                params={"file_id": file_id},
-                timeout=15,
-            )
-            resp2.raise_for_status()
-            file_path = resp2.json()["result"]["file_path"]
-            return f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+            return f"https://raw.githubusercontent.com/{GITHUB_REPOSITORY}/main/{filename}"
         except Exception as e:
             ultimo_erro = str(e)
 
@@ -262,12 +251,10 @@ def main():
     try:
         print(f"\n🎠 Publicando carrossel — {categoria} — {hoje}\n")
 
-        # Localiza slides
         slides = localizar_slides(categoria, hoje, args.formato)
         print(f"  📂 {len(slides)} slides encontrados")
 
-        # Upload de cada slide para catbox.moe
-        print("\n📦 PASSO 1: Upload dos slides para telegra.ph")
+        print("\n📦 PASSO 1: Upload dos slides para GitHub CDN")
         image_urls = []
         for i, slide in enumerate(slides):
             print(f"  ⬆️  Slide {i+1}/{len(slides)}: {slide.name}")
@@ -275,7 +262,6 @@ def main():
             image_urls.append(url)
             print(f"       ✅ {url}")
 
-        # Criar containers individuais
         print("\n📦 PASSO 2: Criando containers de imagem")
         container_ids = []
         for i, url in enumerate(image_urls):
@@ -286,7 +272,6 @@ def main():
             container_ids.append(cid)
             print(f"       ✅ pronto")
 
-        # Criar carrossel
         print("\n📦 PASSO 3: Criando carrossel")
         if args.formato == "glossario":
             pasta_json = Path(__file__).parent / "generated" / "reels"
@@ -304,7 +289,6 @@ def main():
         aguardar_container_pronto(carrossel_id)
         print(f"  ✅ Carrossel pronto")
 
-        # Publicar
         print("\n🚀 PASSO 4: Publicando no @dra.julga")
         media_id = publicar_carrossel(carrossel_id)
     finally:
@@ -316,7 +300,6 @@ def main():
         return
 
     print(f"  ✅ Publicado! media_id={media_id}")
-
     print(f"\n🎉 Carrossel publicado com sucesso!")
     print(f"🌐 https://www.instagram.com/dra.julga/")
 
