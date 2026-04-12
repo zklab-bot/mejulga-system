@@ -58,6 +58,7 @@ jobs:
             echo "categoria=$MANUAL" >> $GITHUB_OUTPUT
             TIPO="${MANUAL_TIPO:-carrossel}"
             echo "tipo=$TIPO" >> $GITHUB_OUTPUT
+            echo "data_roteiro=$(date -u +"%Y-%m-%d")" >> $GITHUB_OUTPUT
             # formato para compatibilidade com steps antigos
             if [ "$TIPO" = "glossario" ]; then
               echo "formato=glossario" >> $GITHUB_OUTPUT
@@ -77,15 +78,26 @@ jobs:
           if   [ "$HORA" = "12" ]; then
             CATEGORIA="${SLOT_A[$IDX]}"
             TIPO="carrossel"
+            DATA_ROTEIRO=$(date -u +"%Y-%m-%d")
           elif [ "$HORA" = "15" ]; then
             CATEGORIA="${SLOT_A[$IDX]}"   # mesmo do carrossel das 12h
             TIPO="verdict_card"
+            DATA_ROTEIRO=$(date -u +"%Y-%m-%d")
           elif [ "$HORA" = "23" ]; then
             CATEGORIA="${SLOT_C[$IDX]}"
             TIPO="carrossel"
+            DATA_ROTEIRO=$(date -u +"%Y-%m-%d")
           else
-            CATEGORIA="${SLOT_C[$IDX]}"   # mesmo do carrossel das 23h
+            # 1h UTC = 22h BRT — verdict card do carrossel das 23h do dia anterior
+            if [ "$DIA" -gt 1 ]; then
+              DIA_ONTEM=$(( DIA - 1 ))
+            else
+              DIA_ONTEM=7
+            fi
+            IDX_ONTEM=$(( (DIA_ONTEM - 1) % 7 ))
+            CATEGORIA="${SLOT_C[$IDX_ONTEM]}"   # categoria do dia anterior
             TIPO="verdict_card"
+            DATA_ROTEIRO=$(date -u -d "yesterday" +"%Y-%m-%d")
           fi
 
           # Glossário: quarta-feira (DIA=3) no slot 23h UTC
@@ -95,13 +107,14 @@ jobs:
 
           echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
           echo "tipo=$TIPO" >> $GITHUB_OUTPUT
+          echo "data_roteiro=$DATA_ROTEIRO" >> $GITHUB_OUTPUT
           # formato para compatibilidade
           if [ "$TIPO" = "glossario" ]; then
             echo "formato=glossario" >> $GITHUB_OUTPUT
           else
             echo "formato=carrossel" >> $GITHUB_OUTPUT
           fi
-          echo "Categoria (slot ${HORA}h UTC): $CATEGORIA | Tipo: $TIPO"
+          echo "Categoria (slot ${HORA}h UTC): $CATEGORIA | Tipo: $TIPO | Data roteiro: $DATA_ROTEIRO"
 
       - name: Verificar duplicata
         id: dedup
@@ -174,7 +187,7 @@ jobs:
 
       - name: Gerar verdict card
         if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo == 'verdict_card'
-        run: cd content-engine && python gerar_verdict_card.py --categoria ${{ steps.categoria.outputs.categoria }}
+        run: cd content-engine && python gerar_verdict_card.py --categoria ${{ steps.categoria.outputs.categoria }} --data ${{ steps.categoria.outputs.data_roteiro }}
 
       - name: Publicar verdict card no Instagram
         if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo == 'verdict_card'
@@ -184,6 +197,7 @@ jobs:
           HORA=$(date -u +"%Hh%M")
           MEDIA_ID=$(python post_verdict_card_instagram.py \
             --categoria ${{ steps.categoria.outputs.categoria }} \
+            --data ${{ steps.categoria.outputs.data_roteiro }} \
             --output-id)
           echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
           echo "hora=$HORA" >> $GITHUB_OUTPUT
@@ -219,6 +233,7 @@ jobs:
 
       - name: Notificar post publicado
         if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
+        continue-on-error: true
         run: |
           cd content-engine
           HOJE=$(date -u +"%Y-%m-%d")
@@ -255,6 +270,7 @@ jobs:
 
       - name: Postar comentario de engajamento
         if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
+        continue-on-error: true
         run: |
           cd content-engine
           python -m engagement.post_engagement \
@@ -263,12 +279,13 @@ jobs:
 
       - name: Notificar comentario de votacao
         if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
+        continue-on-error: true
         run: |
           cd content-engine
           python -m notify send_voting_comment --media_id ${{ steps.media.outputs.media_id }}
 
       - name: Commit do estado e slides gerados
-        if: steps.dedup.outputs.skip != 'true'
+        if: always() && steps.dedup.outputs.skip != 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: post ${{ steps.categoria.outputs.categoria }} (${{ steps.categoria.outputs.tipo }}) publicado [skip ci]"
