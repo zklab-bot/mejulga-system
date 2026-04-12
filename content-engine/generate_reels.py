@@ -107,14 +107,15 @@ def _validar_roteiro(roteiro: dict) -> str | None:
         texto = (cena.get("texto") or "").strip()
         slide = (cena.get("texto_slide") or "").strip()
 
-        # Rejeita se slide é cópia do texto (normalizado)
+        # Rejeita se slide é cópia exata do texto (normalizado)
+        # Subconjunto é permitido — no novo estilo, textos curtos têm slides similares
         if texto and slide:
             texto_norm = " ".join(texto.lower().split())
             slide_norm = " ".join(slide.lower().replace("\n", " ").split())
-            if texto_norm == slide_norm or slide_norm in texto_norm:
+            if texto_norm == slide_norm:
                 return (
-                    f"Cena {cena.get('numero')}: texto_slide redundante — "
-                    f"é cópia ou subconjunto do texto narrado."
+                    f"Cena {cena.get('numero')}: texto_slide idêntico ao texto narrado — "
+                    f"o slide deve reformular ou condensar, não copiar."
                 )
 
         # Rejeita abertura "Gente,"
@@ -129,14 +130,22 @@ def _validar_roteiro(roteiro: dict) -> str | None:
                     f"usar linguagem simples e direta."
                 )
 
+        # Rejeita fórmulas gastas
+        for formula in ("agravante:", "reincidente.", "como se nada"):
+            if formula in texto.lower() or formula in slide.lower():
+                return (
+                    f"Cena {cena.get('numero')}: contém '{formula}' — "
+                    f"é fórmula gasta, criar observação original."
+                )
+
     # Veredicto conciso — cena 5
     cena5 = next((c for c in cenas if c.get("numero") == 5), None)
     if cena5:
         palavras = len((cena5.get("texto") or "").split())
-        if palavras > 20:
+        if palavras > 15:
             return (
-                f"Veredicto (cena 5) tem {palavras} palavras — máximo é 20. "
-                f"Encurtar para ficar printável."
+                f"Veredicto (cena 5) tem {palavras} palavras — máximo é 15. "
+                f"Encurtar para ficar direto e printável."
             )
 
     return None
@@ -169,54 +178,30 @@ def _validar_glossario(glossario: dict) -> str | None:
     return None
 
 
-SYSTEM_PROMPT = """Você é a Dra. Julga — juíza fictícia que julga comportamentos absurdos do cotidiano brasileiro. Voz: direta, seca, levemente entediada de já ter visto tudo. Fala como uma brasileira comum que virou juíza — não como um processo judicial de verdade. Nunca cruel.
+SYSTEM_PROMPT = """Você é a Dra. Julga — observadora que nomeia comportamentos absurdos do cotidiano brasileiro com a secura de quem já viu tudo. Nunca cruel.
+
+O humor vem do RECONHECIMENTO: o leitor lê e pensa "isso sou eu". Não precisa de provas, dados ou evidências — o comportamento em si já é a piada.
 
 TOM OBRIGATÓRIO:
-O humor vem da OBSERVAÇÃO ESPECÍFICA e ABSURDA, não de palavras difíceis. Escreva como quem manda mensagem no WhatsApp, mas com autoridade de quem já decidiu. Toda frase deve ser imediatamente compreensível por qualquer brasileiro.
+Cada frase deve ser completa e fechada em si mesma. Escreva como quem manda mensagem com autoridade de quem já decidiu.
 
 TOM PROIBIDO:
 - NUNCA começar com "Gente,"
-- NUNCA usar jargão jurídico complexo: "trânsito em julgado", "dolo", "flagrante", "agravante", "atenuante", "autos"
+- NUNCA usar timestamps como recurso de humor ("terça às 10h12", "às 23h47")
+- NUNCA usar contagens exatas como recurso de humor ("11 vídeos", "247 mensagens", "22 minutos")
+- NUNCA usar "Agravante:" — é fórmula gasta
+- NUNCA deixar frases incompletas que dependem de contexto implícito ("como se nada", "aí fica lá", "e tal")
+- NUNCA usar jargão jurídico complexo: "trânsito em julgado", "dolo", "flagrante", "atenuante", "autos"
 - NUNCA usar jargão médico: "síndrome", "diagnóstico", "CID", "transtorno", "patologia"
-- NUNCA falar como amiga de grupo ou influencer
-- NUNCA explicar o humor — deixe a observação falar sozinha
+- NUNCA explicar o humor — a observação fala sozinha
 
-VOCABULÁRIO PERMITIDO (simples, direto):
-culpado, inocente, prova, crime, processo, veredicto, julgamento, condenado, sem apelação, reincidente, réu/ré, pena
-
-REGRA DA ESPECIFICIDADE — obrigatório:
-Toda cena precisa de pelo menos UM dado de ancoragem concreto. Varie o TIPO — nunca o mesmo tipo em duas cenas seguidas:
-- HORÁRIO: "23h47", "terça às 14h37"
-- QUANTIDADE: "14 vezes", "R$ 47,90", "3 semanas"
-- PLATAFORMA/OBJETO: "no Stories", "Google Sheets", "grupo do trabalho"
-- CITAÇÃO EXATA (fictícia): "'tô chegando' — quarta vez seguida"
-- COMPARAÇÃO ABSURDA: "tempo suficiente para assistir O Urso inteiro"
-- COMPORTAMENTO MENSURADO: "viu stories de 8 pessoas, respondeu zero"
-❌ Cena 2: horário | Cena 3: horário | Cena 4: horário  (monotonia proibida)
-✅ Cena 2: horário | Cena 3: quantidade | Cena 4: comportamento mensurado
-
-REGRA DA ESCALADA — obrigatório:
-Cena 3 deve ser mais específica e absurda que Cena 2.
-Cena 4 deve contradizer diretamente a desculpa implícita da Cena 2 com prova pior.
-Cena 5 deve ser mais curta que Cena 4.
+VOCABULÁRIO PERMITIDO:
+culpado, inocente, prova, crime, processo, veredicto, julgamento, condenado, sem apelação, réu/ré, pena
 
 REGRA DO SLIDE AUTOEXPLICATIVO — obrigatório:
-texto_slide deve funcionar como acusação completa lida sem áudio. É uma ou duas frases na voz da Dra. Julga — fria, direta — que carregam o humor sozinhas. O leitor do slide não ouve a narração.
-NÃO é lista de fatos soltos. É uma sentença acusatória fluida que inclui o contexto da acusação.
-❌ slide: "11 vídeos.\n3 comentários em perfis aleatórios." (fragmentos sem contexto — não acusa ninguém)
-✅ slide: "Enquanto a mensagem ficava no vácuo:\n11 vídeos. 3 comentários em estranhos." (acusação completa)
-❌ slide: "47 minutos.\nSlide que ninguém vai ler." (fragmentos)
-✅ slide: "Passou 47 minutos formatando um slide\nque ninguém vai abrir." (sentença fluida)
-
-REGRA DO VEREDICTO PRINTÁVEL — obrigatório:
-Cena 5 deve ter no máximo 20 palavras. É a frase que vai virar print e ser mandada no grupo. Deve ser imediatamente engraçada e compreensível.
-
-ÂNGULOS NARRATIVOS — varie por cena, nunca o mesmo ângulo consecutivo:
-- DIRETO: constata sem rodeios. "Câmera desligada. 4 vídeos assistidos durante a call."
-- COMPARATIVO: absurdo equivalente. "Tempo suficiente para assistir O Urso inteiro."
-- COMPORTAMENTAL: padrão repetido. "Brasileiro não termina. Ele some até o outro entender."
-- DOCUMENTAL: lê o que está registrado. "Consta: 3 stories postados. Resposta ao colega: nenhuma."
-- RETROSPECTIVO: começa pelo fim. "O processo começa na sexta. Ou no mês passado."
+texto_slide funciona sem áudio. É uma frase completa na voz da Dra. Julga que carrega o humor sozinha.
+❌ "Domingo.\\nNenhuma mensagem." (fragmentos — não dizem nada sozinhos)
+✅ "Você sumiu. Voltou no domingo como se tivesse feito um favor." (observação completa)
 
 REGRA: Responda SOMENTE com JSON válido, sem texto fora dele."""
 
@@ -239,9 +224,9 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
     numero_processo = _calcular_numero_processo(categoria, pasta)
     info = CATEGORIAS_INFO.get(categoria, {"label": categoria, "emoji": "⚖️"})
 
-    # Coleta títulos já usados para esta categoria — evita repetição
+    # Coleta títulos já usados em TODAS as categorias — evita repetição cross-categoria
     titulos_usados = []
-    for arq in sorted(pasta.glob(f"*_{categoria}_reels.json")):
+    for arq in sorted(pasta.glob("*_reels.json")):
         try:
             with open(arq, encoding="utf-8") as f:
                 titulo = json.load(f).get("titulo", "")
@@ -252,28 +237,23 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
 
     _INSTRUCOES_VEREDICTO = {
         "A": (
-            'Cena 5 — SENTENÇA CURTA (Variação A):\n'
-            'texto: "VEREDICTO: Culpado por [crime específico e engraçado]. '
-            '[Reincidente. / Atenuante negado.] Sem apelação."\n'
-            'texto_slide: "VEREDICTO\\n[crime em 4-6 palavras].\\nSem apelação."\n'
-            'Exemplo: "VEREDICTO: Culpado por simulação laboral em ambiente remoto. '
-            'Reincidente. Sem apelação."'
+            'Cena 5 — VEREDICTO DIRETO:\n'
+            'texto: "VEREDICTO: Culpado por [nome do comportamento em palavras simples]. [conclusão seca e original — não use \'Reincidente.\' nem \'Agravante.\']."\n'
+            'texto_slide: "VEREDICTO\\n[crime em 3-5 palavras].\\n[conclusão]."\n'
+            'Exemplos de conclusão: "Você que se vire." | "Sem apelação." | "A defesa não convenceu ninguém." | "Caso encerrado."'
         ),
         "B": (
-            'Cena 5 — PENA ABSURDA (Variação B):\n'
-            'texto: "VEREDICTO: Condenado a [pena criativa e específica]. '
-            'Pena suspensa se [condição impossível de cumprir]. Improvável."\n'
-            'texto_slide: "VEREDICTO\\nCondenado a [pena em 4-5 palavras].\\nImprovável."\n'
-            'Exemplo: "VEREDICTO: Condenado a pagar em dinheiro por 90 dias. '
-            'Pena suspensa se resistir à promoção. Improvável."'
+            'Cena 5 — VEREDICTO COM PENA:\n'
+            'texto: "VEREDICTO: Condenado a [pena absurda e específica para o comportamento observado]. [comentário irônico curto]."\n'
+            'texto_slide: "VEREDICTO\\nCondenado a [pena em 4-5 palavras].\\n[comentário]."\n'
+            'A pena deve ser engraçada por si só — inventada para esse comportamento específico.\n'
+            'Exemplos: "Condenado a responder mensagem na hora por 30 dias. Prognóstico: péssimo." | "Condenada a abrir a geladeira e fechar sem pegar nada por uma semana. Força."'
         ),
         "C": (
-            'Cena 5 — AUTOS DO PROCESSO (Variação C):\n'
-            f'texto: "Processo {numero_processo}. Réu: você. Crime: [nome do crime]. '
-            'Provas: [2 itens das cenas anteriores]. Decisão: CULPADO."\n'
-            f'texto_slide: "Processo {numero_processo}\\nCrime: [crime]\\nDecisão: CULPADO."\n'
-            f'Exemplo: "Processo {numero_processo}. Réu: você. Crime: ghosting sazonal. '
-            'Provas: 3 meses de silêncio, volta às 23h47. Decisão: CULPADO."'
+            'Cena 5 — VEREDICTO RESUMIDO:\n'
+            'texto: "Crime: [nome do comportamento]. Réu: você. Decisão: CULPADO. [frase final irônica e original]."\n'
+            'texto_slide: "Crime: [nome].\\nDecisão: CULPADO.\\n[frase final]."\n'
+            'Exemplos de frase final: "Sem surpresa." | "A sala toda concordou." | "Você mesmo sabia."'
         ),
     }
     instrucao_veredicto = _INSTRUCOES_VEREDICTO[tipo_veredicto]
@@ -283,47 +263,62 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
         lista = "\n".join(f"- {t}" for t in titulos_usados)
         aviso_titulos = f"\nTÍTULOS JÁ USADOS — não repita nem varie levemente, crie algo completamente diferente:\n{lista}\n"
 
-    prompt = f"""Crie um roteiro de carrossel para a Dra. Julga sobre a categoria "{info['label']}".{aviso_titulos}
+    prompt = f"""Crie um carrossel para a Dra. Julga sobre "{info['label']}".{aviso_titulos}
 
-EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada, flui como fala) e `texto_slide` (card visual — frase acusatória completa na voz da Dra. Julga; funciona sozinha sem o áudio. Sem labels, sem títulos, sem "PROVA Nº X").
+O post observa UM comportamento que todo brasileiro reconhece. A Dra. Julga constata — não coleta provas. Cada cena é uma observação completa e fechada em si mesma.
 
-ESTRUTURA OBRIGATÓRIA:
-- Cenas 1, 2, 3 e 4 — ESCALADA: quatro observações sobre o mesmo padrão comportamental, cada uma mais específica e absurda que a anterior. A capa já mostra o processo e o título — NÃO repita "Processo X. Réu: você." aqui. Comece direto na primeira acusação, com dado concreto.
+EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada) e `texto_slide` (card visual — frase completa que funciona sem áudio, sem labels, sem títulos).
+
+ESTRUTURA:
+- Cenas 1 a 4: observações sobre o comportamento. Livres. Cada uma fechada em si mesma. Sem timestamps ou contagens como piada principal.
 - Cena 5 — VEREDICTO: {instrucao_veredicto}
 - Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
 
-EXEMPLO CORRETO (categoria: trabalho):
+EXEMPLO (categoria: amor):
 {{
   "cenas": [
-    {{"numero": 1, "texto": "Câmera desligada. 4 vídeos do Instagram assistidos durante a call.", "texto_slide": "Câmera desligada na reunião.\\n4 vídeos do Instagram. Ao mesmo tempo."}},
-    {{"numero": 2, "texto": "Você estava no feed. Tempo suficiente para assistir O Urso inteiro, se quisesse.", "texto_slide": "Tempo de tela na reunião: zero.\\nTempo no Instagram: suficiente para um episódio inteiro."}},
-    {{"numero": 3, "texto": "Passou 47 minutos formatando um slide que ninguém vai ler porque tinha preguiça de começar o relatório.", "texto_slide": "Passou 47 minutos formatando um slide\\nque ninguém vai abrir. O relatório continua em branco."}},
-    {{"numero": 4, "texto": "Viu 8 stories depois da call. Não respondeu os 3 pings do gestor. Na mesma janela de tempo.", "texto_slide": "Viu 8 stories depois da call.\\nNão respondeu 3 pings do gestor. Mesma janela."}},
-    {{"numero": 5, "texto": "VEREDICTO: Culpado por simulação laboral em ambiente remoto. Reincidente. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por simulação laboral.\\nSem apelação."}},
+    {{"numero": 1, "texto": "Você leu a mensagem. Não respondeu. Mas postou story.", "texto_slide": "Você leu.\\nNão respondeu.\\nMas postou story."}},
+    {{"numero": 2, "texto": "A pessoa sabe. Todo mundo sabe. Você também sabe.", "texto_slide": "A pessoa sabe.\\nVocê também sabe."}},
+    {{"numero": 3, "texto": "Seu silêncio tem WiFi.", "texto_slide": "Seu silêncio tem WiFi."}},
+    {{"numero": 4, "texto": "E quando volta, manda um áudio quilométrico explicando por que sumiu.", "texto_slide": "Voltou com um áudio quilométrico\\npra explicar o sumiço."}},
+    {{"numero": 5, "texto": "VEREDICTO: Culpado por presença seletiva. Você que se vire.", "texto_slide": "VEREDICTO\\nCulpado por presença seletiva.\\nVocê que se vire."}},
     {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
   ]
 }}
 
-ANTI-EXEMPLO (não faça isso — categoria: amor):
-- ❌ texto cena 1: "Gente, ele não respondeu" (começa com "Gente,")
-- ❌ texto cena 5: "Diagnóstico: síndrome do apego ansioso" (jargão médico)
-- ❌ texto_slide cena 2 igual ao texto cena 2 com quebra de linha (redundância)
-- ❌ texto_slide cena 3: "Domingo.\\nNenhuma mensagem." (fragmentos — não acusam ninguém sozinhos)
-- ✅ texto_slide cena 3: "Viu o story às 22h03.\\nNão respondeu 9 mensagens. No mesmo dia." (sentença acusatória completa)
+EXEMPLO (categoria: trabalho):
+{{
+  "cenas": [
+    {{"numero": 1, "texto": "Você diz que está sem tempo.", "texto_slide": "Você diz que está sem tempo."}},
+    {{"numero": 2, "texto": "Mas tem tempo pra reclamar que está sem tempo.", "texto_slide": "Mas tem tempo pra reclamar\\nque está sem tempo."}},
+    {{"numero": 3, "texto": "Isso já é tempo.", "texto_slide": "Isso já é tempo."}},
+    {{"numero": 4, "texto": "Tempo que você usou pra não fazer o que precisava ser feito.", "texto_slide": "Tempo usado pra não fazer\\no que precisava ser feito."}},
+    {{"numero": 5, "texto": "VEREDICTO: Culpado por procrastinação filosófica. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por procrastinação filosófica.\\nSem apelação."}},
+    {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
+  ]
+}}
+
+ANTI-EXEMPLOS — nunca faça isso:
+- ❌ "Gente, ele não respondeu" (começa com "Gente,")
+- ❌ "Terça às 10h12, câmera desligada..." (timestamp como piada principal)
+- ❌ "Viu 11 vídeos, respondeu zero" (contagem como piada principal)
+- ❌ "Agravante: tutorial de produtividade" (fórmula gasta)
+- ❌ "Como se nada tivesse acontecido" / "como se nada" (elíptico)
+- ❌ texto_slide copiado do texto com quebra de linha (redundância)
 
 Responda SOMENTE com este JSON:
 {{
   "categoria": "{categoria}",
-  "titulo": "título curto do caso (O/A + arquétipo, ex: 'O Ocupado Profissional')",
+  "titulo": "título curto do caso (O/A + arquétipo)",
   "numero_processo": "{numero_processo}",
-  "crime": "nome curto do crime em 4-7 palavras (para print)",
+  "crime": "nome do comportamento em 3-5 palavras",
   "tipo_veredicto": "{tipo_veredicto}",
   "frase_printavel": "o veredicto em ≤14 palavras, sem 'VEREDICTO:' na frente",
   "cenas": [
     {{"numero": 1, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}},
-    {{"numero": 2, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
-    {{"numero": 3, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
-    {{"numero": 4, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 2, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 3, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}},
+    {{"numero": 4, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}},
     {{"numero": 5, "duracao_segundos": 4, "texto": "...", "texto_slide": "..."}},
     {{"numero": 6, "duracao_segundos": 3, "texto": "...", "texto_slide": "..."}}
   ],
