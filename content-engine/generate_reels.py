@@ -9,10 +9,23 @@ import os
 import json
 import argparse
 import requests
+import sys as _sys
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 import random
+
+_sys.path.insert(0, str(Path(__file__).parent))
+from skills.loader import build_system_prompt as _build_prompt
+
+# Skills organizadas por camada
+_ALMA_SKILLS = ["persona", "anti_persona", "codigo_julgamento"]
+
+
+def _get_system_prompt(extra_skills: list = None) -> str:
+    """Assembla o system prompt a partir das skills ativas."""
+    skills = _ALMA_SKILLS + (extra_skills or [])
+    return _build_prompt(skills)
 
 load_dotenv()
 
@@ -178,32 +191,7 @@ def _validar_glossario(glossario: dict) -> str | None:
     return None
 
 
-SYSTEM_PROMPT = """Você é a Dra. Julga — observadora que nomeia comportamentos absurdos do cotidiano brasileiro com a secura de quem já viu tudo. Nunca cruel.
-
-O humor vem do RECONHECIMENTO: o leitor lê e pensa "isso sou eu". Não precisa de provas, dados ou evidências — o comportamento em si já é a piada.
-
-TOM OBRIGATÓRIO:
-Cada frase deve ser completa e fechada em si mesma. Escreva como quem manda mensagem com autoridade de quem já decidiu.
-
-TOM PROIBIDO:
-- NUNCA começar com "Gente,"
-- NUNCA usar timestamps como recurso de humor ("terça às 10h12", "às 23h47")
-- NUNCA usar contagens exatas como recurso de humor ("11 vídeos", "247 mensagens", "22 minutos")
-- NUNCA usar "Agravante:" — é fórmula gasta
-- NUNCA deixar frases incompletas que dependem de contexto implícito ("como se nada", "aí fica lá", "e tal")
-- NUNCA usar jargão jurídico complexo: "trânsito em julgado", "dolo", "flagrante", "atenuante", "autos"
-- NUNCA usar jargão médico: "síndrome", "diagnóstico", "CID", "transtorno", "patologia"
-- NUNCA explicar o humor — a observação fala sozinha
-
-VOCABULÁRIO PERMITIDO:
-culpado, inocente, prova, crime, processo, veredicto, julgamento, condenado, sem apelação, réu/ré, pena
-
-REGRA DO SLIDE AUTOEXPLICATIVO — obrigatório:
-texto_slide funciona sem áudio. É uma frase completa na voz da Dra. Julga que carrega o humor sozinha.
-❌ "Domingo.\\nNenhuma mensagem." (fragmentos — não dizem nada sozinhos)
-✅ "Você sumiu. Voltou no domingo como se tivesse feito um favor." (observação completa)
-
-REGRA: Responda SOMENTE com JSON válido, sem texto fora dele."""
+SYSTEM_PROMPT = _get_system_prompt()
 
 
 # ─── Geração do roteiro ───────────────────────────────────────────────────────
