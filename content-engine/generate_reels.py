@@ -121,15 +121,15 @@ def _validar_roteiro(roteiro: dict) -> str | None:
         texto = (cena.get("texto") or "").strip()
         slide = (cena.get("texto_slide") or "").strip()
 
-        # Rejeita se slide é cópia exata do texto (normalizado)
-        # Subconjunto é permitido — no novo estilo, textos curtos têm slides similares
-        if texto and slide:
+        # Rejeita slide idêntico ao texto apenas quando a narração é longa (> 7 palavras)
+        # Frases curtas são intrinsecamente visuais — podem ser iguais ao slide
+        if texto and slide and len(texto.split()) > 7:
             texto_norm = " ".join(texto.lower().split())
             slide_norm = " ".join(slide.lower().replace("\n", " ").split())
             if texto_norm == slide_norm:
                 return (
-                    f"Cena {cena.get('numero')}: texto_slide idêntico ao texto narrado — "
-                    f"o slide deve reformular ou condensar, não copiar."
+                    f"Cena {cena.get('numero')}: texto_slide idêntico ao texto narrado (narração longa) — "
+                    f"o slide deve condensar e reformular, não copiar."
                 )
 
         # Rejeita abertura "Gente,"
@@ -239,10 +239,12 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
             'Exemplos: "Condenado a responder mensagem na hora por 30 dias. Prognóstico: péssimo." | "Condenada a abrir a geladeira e fechar sem pegar nada por uma semana. Força."'
         ),
         "C": (
-            'Cena 5 — VEREDICTO RESUMIDO:\n'
-            'texto: "Crime: [nome do comportamento]. Réu: você. Decisão: CULPADO. [frase final irônica e original]."\n'
-            'texto_slide: "Crime: [nome].\\nDecisão: CULPADO.\\n[frase final]."\n'
-            'Exemplos de frase final: "Sem surpresa." | "A sala toda concordou." | "Você mesmo sabia."'
+            'Cena 5 — VEREDICTO ABSOLVIDO IRÔNICO (raro — a absolvição é uma condenação disfarçada):\n'
+            'texto: "VEREDICTO: Absolvido. [comentário irônico que deixa claro que não foi mesmo absolvido]."\n'
+            'texto_slide: "VEREDICTO\\nAbsolvido.\\n[comentário irônico]."\n'
+            'Exemplos: "Absolvido. Desta vez. A Dra. Julga vai continuar monitorando." | '
+            '"Absolvido. Por falta de provas. A Dra. Julga discorda, mas respeita o processo." | '
+            '"Absolvido. A sala não acreditou, mas tudo bem."'
         ),
     }
     instrucao_veredicto = _INSTRUCOES_VEREDICTO[tipo_veredicto]
@@ -278,14 +280,20 @@ EXEMPLO (categoria: amor):
 EXEMPLO (categoria: trabalho):
 {{
   "cenas": [
-    {{"numero": 1, "texto": "Você diz que está sem tempo.", "texto_slide": "Você diz que está sem tempo."}},
-    {{"numero": 2, "texto": "Mas tem tempo pra reclamar que está sem tempo.", "texto_slide": "Mas tem tempo pra reclamar\\nque está sem tempo."}},
+    {{"numero": 1, "texto": "Você diz que está sem tempo.", "texto_slide": "Sem tempo."}},
+    {{"numero": 2, "texto": "Mas tem tempo pra reclamar que está sem tempo.", "texto_slide": "Tem tempo pra reclamar\\nque não tem tempo."}},
     {{"numero": 3, "texto": "Isso já é tempo.", "texto_slide": "Isso já é tempo."}},
-    {{"numero": 4, "texto": "Tempo que você usou pra não fazer o que precisava ser feito.", "texto_slide": "Tempo usado pra não fazer\\no que precisava ser feito."}},
+    {{"numero": 4, "texto": "Tempo que você usou pra não fazer o que precisava ser feito.", "texto_slide": "Usado pra não fazer\\no que precisava ser feito."}},
     {{"numero": 5, "texto": "VEREDICTO: Culpado por procrastinação filosófica. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por procrastinação filosófica.\\nSem apelação."}},
     {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
   ]
 }}
+
+REGRA DO SLIDE VISUAL:
+- `texto` = narração falada, pode ser longa e fluida
+- `texto_slide` = versão para o card visual — condensada, sem conectivos, quebrável em linhas
+- Para narrações curtas (≤ 7 palavras): slide PODE ser igual ou ligeiramente diferente
+- Para narrações longas (> 7 palavras): slide DEVE condensar — NUNCA copiar igual
 
 ANTI-EXEMPLOS — nunca faça isso:
 - ❌ "Gente, ele não respondeu" (começa com "Gente,")

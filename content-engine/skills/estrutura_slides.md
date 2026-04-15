@@ -12,6 +12,22 @@ Nunca comprimir duas funções em um slide. Nunca pular um slide.
 **Proibido:** Revelar o veredicto. Explicar o crime completamente. Fechar o loop.
 **Referência:** Usar um template dos Grupos V, L ou C das Regras de Hook.
 
+## Regra do Slide Visual
+
+`texto` = narração falada (pode ser longa, fluida, conversacional).
+`texto_slide` = versão visual para o card — condensada, sem conectivos, quebrável em linhas.
+
+**Para narações curtas (≤ 7 palavras):** o slide PODE ser idêntico — a frase já é visual.
+**Para narações longas (> 7 palavras):** o slide DEVE condensar. Nunca copiar.
+
+❌ texto: "No fim do dia, você agenda uma reunião para discutir o que ficou pendente."
+❌ slide: "No fim do dia, você agenda uma reunião para discutir o que ficou pendente."
+
+✅ texto: "No fim do dia, você agenda uma reunião para discutir o que ficou pendente."
+✅ slide: "Pendências do dia:\nagendou uma reunião\npara discuti-las."
+
+---
+
 ## Slide 2 — Hook Secundário
 
 **Função:** Aprofundar a tensão aberta no Slide 1. Não resolvê-la.
