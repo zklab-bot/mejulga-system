@@ -273,17 +273,17 @@ def main():
             print(f"       ✅ pronto")
 
         print("\n📦 PASSO 3: Criando carrossel")
+        pasta_json = Path(__file__).parent / "generated" / "reels"
         if args.formato == "glossario":
-            pasta_json = Path(__file__).parent / "generated" / "reels"
             arq = pasta_json / f"{hoje}_{categoria}_glossario.json"
-            if arq.exists():
-                with open(arq, encoding="utf-8") as f:
-                    glossario = json.load(f)
-            else:
-                glossario = {}
-            caption = glossario.get("legenda_instagram") or CATEGORIAS_CAPTION.get(categoria, "")
         else:
-            caption = CATEGORIAS_CAPTION[categoria]
+            arq = pasta_json / f"{hoje}_{categoria}_reels.json"
+        if arq.exists():
+            with open(arq, encoding="utf-8") as f:
+                dados = json.load(f)
+            caption = dados.get("legenda_instagram") or CATEGORIAS_CAPTION.get(categoria, "")
+        else:
+            caption = CATEGORIAS_CAPTION.get(categoria, "")
         carrossel_id = criar_carrossel(container_ids, caption)
         print(f"  Carrossel ID: {carrossel_id} — aguardando FINISHED...")
         aguardar_container_pronto(carrossel_id)
