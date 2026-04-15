@@ -254,54 +254,57 @@ def gerar_roteiro(categoria: str, tipo_veredicto: str = None, pasta: Path = None
         lista = "\n".join(f"- {t}" for t in titulos_usados)
         aviso_titulos = f"\nTÍTULOS JÁ USADOS — não repita nem varie levemente, crie algo completamente diferente:\n{lista}\n"
 
-    prompt = f"""Crie um carrossel para a Dra. Julga sobre "{info['label']}".{aviso_titulos}
+    # ── Hook assignment (orquestrado por hook_rules.md) ──────────────────────
+    _HOOK_POR_CATEGORIA = {
+        "trabalho":     {"cena1": ("E1", 'Você [ação concreta e vergonhosa]. [Dado objetivo que piora].'),
+                         "cena2": ("D1", 'Clinicamente: [verdade dura sem compaixão]. Isso tem nome.')},
+        "amor":         {"cena1": ("E1", 'Você [ação concreta e vergonhosa]. [Dado objetivo que piora].'),
+                         "cena2": ("D3", '[O que você acha que é] e [o que realmente é] não são a mesma coisa.')},
+        "dinheiro":     {"cena1": ("E1", 'Você [ação concreta e vergonhosa]. [Dado objetivo que piora].'),
+                         "cena2": ("D2", 'Diagnóstico: [comportamento nomeado como condição]. Prognóstico: [irônico].')},
+        "dopamina":     {"cena1": ("E3", '[Lista seca de comportamentos observados]. A Dra. Julga catalogou.'),
+                         "cena2": ("D1", 'Clinicamente: [verdade dura sem compaixão]. Isso tem nome.')},
+        "vida_adulta":  {"cena1": ("E2", 'Você disse [X]. Fez [Y]. A Dra. Julga registrou os dois.'),
+                         "cena2": ("D3", '[O que você acha que é] e [o que realmente é] não são a mesma coisa.')},
+        "social":       {"cena1": ("E1", 'Você [ação concreta e vergonhosa]. [Dado objetivo que piora].'),
+                         "cena2": ("D1", 'Clinicamente: [verdade dura sem compaixão]. Isso tem nome.')},
+        "saude_mental": {"cena1": ("V1", 'Você não está [X]. Você está [verdade real].'),
+                         "cena2": ("D1", 'Clinicamente: [verdade dura sem compaixão — sem diagnóstico médico real].')},
+    }
+    hook = _HOOK_POR_CATEGORIA.get(categoria, _HOOK_POR_CATEGORIA["trabalho"])
+    hook_c1_grupo, hook_c1_formula = hook["cena1"]
+    hook_c2_grupo, hook_c2_formula = hook["cena2"]
 
-O post observa UM comportamento que todo brasileiro reconhece. A Dra. Julga constata — não coleta provas. Cada cena é uma observação completa e fechada em si mesma.
+    prompt = f"""Crie um carrossel inédito para a Dra. Julga sobre "{info['label']}".{aviso_titulos}
 
-EXATAMENTE 6 cenas. Cada cena tem `texto` (narração falada) e `texto_slide` (card visual — frase completa que funciona sem áudio, sem labels, sem títulos).
+Post sobre UM comportamento brasileiro reconhecível — diferente de todos os anteriores.
+EXATAMENTE 6 cenas. Cada cena: `texto` (narração falada) + `texto_slide` (card visual autônomo).
 
-ESTRUTURA:
-- Cenas 1 a 4: observações sobre o comportamento. Livres. Cada uma fechada em si mesma. Sem timestamps ou contagens como piada principal.
-- Cena 5 — VEREDICTO: {instrucao_veredicto}
-- Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
+ESTRUTURA DE CENAS (referência: hook_rules.md + estrutura_slides.md):
 
-EXEMPLO (categoria: amor):
-{{
-  "cenas": [
-    {{"numero": 1, "texto": "Você leu a mensagem. Não respondeu. Mas postou story.", "texto_slide": "Você leu.\\nNão respondeu.\\nMas postou story."}},
-    {{"numero": 2, "texto": "A pessoa sabe. Todo mundo sabe. Você também sabe.", "texto_slide": "A pessoa sabe.\\nVocê também sabe."}},
-    {{"numero": 3, "texto": "Seu silêncio tem WiFi.", "texto_slide": "Seu silêncio tem WiFi."}},
-    {{"numero": 4, "texto": "E quando volta, manda um áudio quilométrico explicando por que sumiu.", "texto_slide": "Voltou com um áudio quilométrico\\npra explicar o sumiço."}},
-    {{"numero": 5, "texto": "VEREDICTO: Culpado por presença seletiva. Você que se vire.", "texto_slide": "VEREDICTO\\nCulpado por presença seletiva.\\nVocê que se vire."}},
-    {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
-  ]
-}}
+Cena 1 — EXPOSIÇÃO [{hook_c1_grupo}] — o conteúdo mais forte, para o scroll:
+  Fórmula: {hook_c1_formula}
+  Regra: dado concreto e observável. Nunca descrição genérica. O leitor pensa "ela estava me vendo".
 
-EXEMPLO (categoria: trabalho):
-{{
-  "cenas": [
-    {{"numero": 1, "texto": "Você diz que está sem tempo.", "texto_slide": "Sem tempo."}},
-    {{"numero": 2, "texto": "Mas tem tempo pra reclamar que está sem tempo.", "texto_slide": "Tem tempo pra reclamar\\nque não tem tempo."}},
-    {{"numero": 3, "texto": "Isso já é tempo.", "texto_slide": "Isso já é tempo."}},
-    {{"numero": 4, "texto": "Tempo que você usou pra não fazer o que precisava ser feito.", "texto_slide": "Usado pra não fazer\\no que precisava ser feito."}},
-    {{"numero": 5, "texto": "VEREDICTO: Culpado por procrastinação filosófica. Sem apelação.", "texto_slide": "VEREDICTO\\nCulpado por procrastinação filosófica.\\nSem apelação."}},
-    {{"numero": 6, "texto": "Veja seu processo em mejulga.com.br", "texto_slide": "Veja seu processo.\\nmejulga.com.br"}}
-  ]
-}}
+Cena 2 — DIAGNÓSTICO [{hook_c2_grupo}] — aprofunda, nunca repete a Cena 1:
+  Fórmula: {hook_c2_formula}
+  Regra: verdade sem saída. Sem consolação. Sem empatia. O leitor não tem argumento.
 
-REGRA DO SLIDE VISUAL:
-- `texto` = narração falada, pode ser longa e fluida
-- `texto_slide` = versão para o card visual — condensada, sem conectivos, quebrável em linhas
-- Para narrações curtas (≤ 7 palavras): slide PODE ser igual ou ligeiramente diferente
-- Para narrações longas (> 7 palavras): slide DEVE condensar — NUNCA copiar igual
+Cena 3 — PROVA 1: comportamento observável e específico. Mais absurdo que Cena 2.
+Cena 4 — PROVA 2: contradiz a desculpa implícita da Cena 2 com detalhe pior.
+Cena 5 — VEREDICTO: {instrucao_veredicto}
+Cena 6 — CTA (fixo): texto: "Veja seu processo em mejulga.com.br" | texto_slide: "Veja seu processo.\\nmejulga.com.br"
 
-ANTI-EXEMPLOS — nunca faça isso:
-- ❌ "Gente, ele não respondeu" (começa com "Gente,")
-- ❌ "Terça às 10h12, câmera desligada..." (timestamp como piada principal)
-- ❌ "Viu 11 vídeos, respondeu zero" (contagem como piada principal)
-- ❌ "Agravante: tutorial de produtividade" (fórmula gasta)
-- ❌ "Como se nada tivesse acontecido" / "como se nada" (elíptico)
-- ❌ texto_slide copiado do texto com quebra de linha (redundância)
+SLIDE VISUAL:
+- Narração curta (≤7 palavras): slide pode ser igual
+- Narração longa (>7 palavras): slide condensa — nunca copia
+
+PROIBIDO:
+- Começar com "Gente,"
+- Timestamps ou contagens exatas como piada ("às 10h12", "11 vídeos")
+- "Agravante:" — fórmula gasta
+- Frases incompletas dependentes de contexto implícito
+- Copiar estrutura ou conteúdo de posts anteriores
 
 Responda SOMENTE com este JSON:
 {{

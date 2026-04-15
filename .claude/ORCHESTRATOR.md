@@ -17,16 +17,41 @@ Sempre leia nessa sequência antes de qualquer tarefa:
 ## Quando usar cada skill
 
 ### Tarefas de geração de conteúdo
-Skills obrigatórias: 01 + 02 + 03
-Skills complementares (content-engine/skills/): persona.md, anti_persona.md, codigo_julgamento.md, hook_rules.md, estrutura_slides.md, legenda_rules.md
-- Gerar roteiro de carrossel
-- Criar novo tema para categoria
-- Revisar copy de slides
+
+#### Skills carregadas automaticamente pelo loader (content-engine/skills/)
+1. `persona.md` — voz, tom, ritmo, vocabulário da Dra. Julga
+2. `anti_persona.md` — limites: o que ela nunca faz
+3. `codigo_julgamento.md` — estrutura acusação → provas → veredicto
+4. `hook_rules.md` — grupos E, D, V, L, C + mapeamento categoria→hook
+5. `estrutura_slides.md` — papel de cada cena + regra do slide visual
+6. `legenda_rules.md` — legenda, CTA, hashtags
+
+#### Fluxo de geração (python generate_reels.py --categoria X)
+1. `loader.py` assembla skills 1–6 em system prompt (~16k chars)
+2. `generate_reels.py` seleciona hook por categoria via `_HOOK_POR_CATEGORIA`
+3. Prompt instrui cenas por grupo (E→D→provas→veredicto→CTA)
+4. Validador rejeita: slide=narração longa, jargão, fórmulas gastas, veredicto longo
+5. Máximo 2 tentativas; na 2ª falha passa para revisão manual
 
 #### Hierarquia de hook por cena
-- **Cena 1:** Grupo E (Exposição Direta) ou V1/C1 — dado concreto, quase humilhação leve
-- **Cena 2:** Grupo D (Diagnóstico Frio) ou V3/V6 — verdade clínica sem consolação
-- Referência completa: `content-engine/skills/hook_rules.md`
+| Cena | Grupo | Função |
+|------|-------|--------|
+| 1 | E (Exposição Direta) | Flagrante com dado concreto — para o scroll |
+| 2 | D (Diagnóstico Frio) | Verdade clínica sem consolação — aprofunda |
+| 3–4 | Provas | Comportamentos observáveis, escalada progressiva |
+| 5 | Veredicto A/B/C | Sentença seca, máx 15 palavras |
+| 6 | CTA fixo | mejulga.com.br |
+
+#### Mapeamento categoria → hook (fonte: hook_rules.md)
+| Categoria | Cena 1 | Cena 2 |
+|-----------|--------|--------|
+| trabalho | E1 | D1 |
+| amor | E1 | D3 |
+| dinheiro | E1 | D2 |
+| dopamina | E3 | D1 |
+| vida_adulta | E2 | D3 |
+| social | E1 | D1 |
+| saude_mental | V1 | D1 |
 
 ### Tarefas de desenvolvimento técnico
 Skills obrigatórias: 01 + 04 + 05
