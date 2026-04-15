@@ -20,11 +20,12 @@ from skills.loader import build_system_prompt as _build_prompt
 
 # Skills organizadas por camada
 _ALMA_SKILLS = ["persona", "anti_persona", "codigo_julgamento"]
+_CRIATIVA_SKILLS = ["hook_rules", "estrutura_slides", "legenda_rules"]
 
 
 def _get_system_prompt(extra_skills: list = None) -> str:
     """Assembla o system prompt a partir das skills ativas."""
-    skills = _ALMA_SKILLS + (extra_skills or [])
+    skills = _ALMA_SKILLS + _CRIATIVA_SKILLS + (extra_skills or [])
     return _build_prompt(skills)
 
 load_dotenv()
