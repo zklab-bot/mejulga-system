@@ -16,6 +16,96 @@ Um hook que apenas para o scroll sem criar razão para swipe não é suficiente.
 
 ---
 
+## Regra de Hierarquia — Cena 1 e Cena 2
+
+**A Cena 1 contém o conteúdo mais forte do carrossel.**
+É ela que para o scroll. Cena 2 aprofunda — nunca supera.
+
+### Cena 1 — Acusação específica e visual
+
+Deve ter pelo menos um dos três elementos abaixo:
+- **Número ou dado concreto:** "47 páginas", "3 dias", "segunda aba aberta"
+- **Comportamento reconhecível:** algo que o usuário já fez hoje ou ontem
+- **Nomeação que provoca:** dá um nome ao comportamento que o réu nunca tinha ouvido
+
+**Nunca é uma descrição genérica.** A diferença é fatal:
+
+❌ **Descrição** (fraca — descreve sem acusar):
+"Você não começou a tarefa. Mas pesquisou muito sobre ela."
+"Você organiza o trabalho em vez de fazer o trabalho."
+
+✅ **Acusação específica e visual** (forte — para o scroll):
+"Seu Notion tem 47 páginas. Seu resultado: zero."
+"Você leu 3 artigos sobre produtividade hoje. Não produziu nada."
+
+**Estrutura obrigatória por grupo:**
+
+| Grupo | Estrutura | Exemplo trabalho |
+|-------|-----------|-----------------|
+| V | "[Dado concreto]. [Verdade que dói]." | "Seu Notion tem 47 páginas. Seu resultado: zero." |
+| V | "[X específico] tem nome. E não é [o que você acha]." | "Isso que você chama de pesquisa tem nome. Não é produtividade." |
+| L | "Se você [comportamento específico], esse post é sobre você." | "Se você tem aba de 'referências para ler depois' aberta agora, esse post é sobre você." |
+| C | "[Dado absurdo + específico]. A Dra. Julga sabe o que aconteceu depois." | "Você abriu o documento. Ajustou a fonte. Fechou. A Dra. Julga registrou." |
+
+### Cena 2 — Consequência ou prova que aprofunda
+
+**Cena 2 revela o "por quê" ou a consequência da Cena 1.**
+Nunca repete, resume ou parafraseia a Cena 1.
+
+❌ **Repetição disfarçada** (fraca):
+Cena 1: "Seu Notion tem 47 páginas. Seu resultado: zero."
+Cena 2: "O planejamento cresceu. O trabalho não."
+
+✅ **Consequência que aprofunda** (forte):
+Cena 1: "Seu Notion tem 47 páginas. Seu resultado: zero."
+Cena 2: "Você não tem problema de planejamento. Você tem medo de começar."
+
+A Cena 2 deve fazer o usuário parar e pensar — não apenas concordar com o que já foi dito.
+
+---
+
+## Grupo E — Exposição Direta (Cena 1 prioritária)
+
+Expõe o comportamento com dado concreto e específico. Quase humilhação leve — o leitor ri, mas com vergonha. Sem julgamento explícito: a exposição fala sozinha.
+
+**Regra:** sempre tem um dado observável (número, objeto, plataforma, ação). A Dra. Julga não comenta — ela registra.
+
+**E1 — Flagrante com Dado**
+Fórmula: `Você [ação específica e vergonhosa]. [Dado concreto que piora].`
+Exemplo trabalho: "Você tem 47 tarefas abertas no Notion. Fechou o notebook e foi ver receita no YouTube."
+Exemplo amor: "Você leu a mensagem. Ficou dois minutos digitando. Apagou. Não respondeu."
+
+**E2 — Flagrante com Contradição**
+Fórmula: `Você disse [X]. Fez [Y]. A Dra. Julga registrou os dois.`
+Exemplo: "Você disse que ia começar na segunda. Hoje é quinta. A Dra. Julga registrou as quatro segundas."
+
+**E3 — Inventário Clínico**
+Fórmula: `[Lista seca de comportamentos observados]. A Dra. Julga catalogou.`
+Exemplo: "Abriu o documento. Ajustou a fonte. Mudou o título. Fechou. O relatório continua em branco."
+
+---
+
+## Grupo D — Diagnóstico Frio (Cena 2 prioritária)
+
+Entrega a verdade inconveniente em linguagem clínica. Sem consolação, sem empatia, sem saída. O leitor lê e não tem argumento — porque já sabia.
+
+**Regra:** usa terminologia técnica falsa ou linguagem de laudo. A Dra. Julga não explica o humor — o diagnóstico fala por si.
+
+**D1 — CID Falso**
+Fórmula: `Clinicamente: [verdade dura sem compaixão]. Isso tem nome.`
+Exemplo trabalho: "Clinicamente: não é falta de tempo. É medo de entregar e descobrir que não era tão bom assim."
+Exemplo amor: "Clinicamente: não é introversão. É medo de ser rejeitado antes de tentar."
+
+**D2 — Laudo Seco**
+Fórmula: `Diagnóstico: [comportamento nomeado como condição]. Prognóstico: [irônico].`
+Exemplo: "Diagnóstico: perfeccionismo seletivo agudo — só quando a tarefa é fácil. Prognóstico: a tarefa difícil continua lá."
+
+**D3 — Distinção Cruel**
+Fórmula: `[O que você acha que é] e [o que realmente é] não são a mesma coisa. A Dra. Julga sabe qual é o seu caso.`
+Exemplo: "Ser ocupado e ser produtivo não são a mesma coisa. A Dra. Julga sabe qual é o seu caso."
+
+---
+
 ## Grupo V — Verdade Inconveniente (foco principal)
 
 Diz o que o usuário já sabe mas não quer admitir. Não precisa provar — ele já reconhece.
@@ -121,12 +211,14 @@ Exemplo: "A Dra. Julga calculou: você vai passar 4 anos da sua vida rolando o f
 
 ## Hook Recomendado por Categoria
 
-| Categoria | Melhor grupo | Template prioritário |
-|-----------|-------------|---------------------|
-| Trabalho | V + C | V1, V3, C1, C3 |
-| Amor | V + C | V4, V6, C2, C5 |
-| Dinheiro | V + L | V2, V7, L4, C1 |
-| Dopamina | V + C | V5, C3, C6, L3 |
-| Vida Adulta | V + L | V3, V8, L2, C4 |
-| Social | V + C | V4, L5, C2, C5 |
-| Saúde Mental | V | V1, V3, V6, V8 |
+Cena 1 = hook que para o scroll. Cena 2 = hook que entrega a verdade.
+
+| Categoria | Cena 1 (para o scroll) | Cena 2 (entrega a verdade) |
+|-----------|----------------------|--------------------------|
+| Trabalho | E1, E3, V1, C1 | D1, D3, V3 |
+| Amor | E1, E2, V4, C5 | D1, D3, V6 |
+| Dinheiro | E1, V2, L4, C1 | D2, V7, D3 |
+| Dopamina | E3, V5, C3, C6 | D1, D2, V8 |
+| Vida Adulta | E2, V3, L2, C4 | D3, V8, D2 |
+| Social | E1, V4, L5, C2 | D1, D3, V6 |
+| Saúde Mental | V1, V3, V6, V8 | D1, D3 (sem CID real) |

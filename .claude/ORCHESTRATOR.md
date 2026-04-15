@@ -18,9 +18,15 @@ Sempre leia nessa sequência antes de qualquer tarefa:
 
 ### Tarefas de geração de conteúdo
 Skills obrigatórias: 01 + 02 + 03
+Skills complementares (content-engine/skills/): persona.md, anti_persona.md, codigo_julgamento.md, hook_rules.md, estrutura_slides.md, legenda_rules.md
 - Gerar roteiro de carrossel
 - Criar novo tema para categoria
 - Revisar copy de slides
+
+#### Hierarquia de hook por cena
+- **Cena 1:** Grupo E (Exposição Direta) ou V1/C1 — dado concreto, quase humilhação leve
+- **Cena 2:** Grupo D (Diagnóstico Frio) ou V3/V6 — verdade clínica sem consolação
+- Referência completa: `content-engine/skills/hook_rules.md`
 
 ### Tarefas de desenvolvimento técnico
 Skills obrigatórias: 01 + 04 + 05
