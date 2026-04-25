@@ -23,14 +23,14 @@ ALTURA       = 1080
 TEMPLATES_DIR = Path(__file__).parent / "templates" / "carrossel"
 
 # ─── Paleta ───────────────────────────────────────────────────────────────────
-ROXO_PROFUNDO  = (30, 10, 70)       # texto principal, âncoras escuras
-ROXO_VIBRANTE  = (138, 43, 226)     # labels, bordas de destaque, badges
-CINZA_SUAVE    = (245, 243, 250)    # fundo de pills, caixa de veredicto
-DOURADO        = (255, 193, 37)     # ícones decorativos, URL, ornamentos
-BRANCO_PURO    = (255, 255, 255)    # fundo de todos os slides
-ROXO_BORDA     = (100, 50, 170)     # bordas de caixas, dots inativos
-CINZA_MEDIO    = (150, 140, 165)    # contadores, rodapé sutil
-VERMELHO_STAMP = (200, 30, 30)      # carimbo CULPADO
+CREME_FUNDO     = (245, 240, 232)   # fundo claro principal (#F5F0E8)
+PRETO_EDITORIAL = (13, 13, 13)      # texto principal, ancoras escuras (#0D0D0D)
+DOURADO_OPACO   = (200, 169, 126)   # destaques, URLs, ornamentos (#C8A97E)
+VERMELHO_STAMP  = (176, 48, 32)     # carimbo CULPADO (#B03020)
+CREME_ESCURO    = (26, 20, 16)      # texto secundario, badges (#1A1410)
+CINZA_MEDIO     = (150, 140, 130)   # contadores, rodape sutil
+BRANCO_PURO     = (255, 255, 255)   # slides com fundo branco (hooks L5/C1/C4)
+BEGE_BORDA      = (232, 224, 208)   # bordas suaves (#E8E0D0)
 
 # ─── Categorias ───────────────────────────────────────────────────────────────
 CATEGORIAS = [
@@ -63,22 +63,47 @@ VEREDICTO_CTA_L3 = "mejulga.com.br"
 
 # ─── Tipografia ───────────────────────────────────────────────────────────────
 
-def encontrar_fonte(tamanho: int, bold: bool = True) -> ImageFont.FreeTypeFont:
-    if bold:
-        fontes = [
-            "C:/Windows/Fonts/arialbd.ttf",
-            "C:/Windows/Fonts/calibrib.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        ]
+def _fonte_path(nome: str) -> str:
+    base = os.path.join(os.path.dirname(__file__), "..", "fonts")
+    return os.path.join(base, nome)
+
+
+def encontrar_fonte(tamanho: int, bold: bool = True, italic: bool = False) -> ImageFont.FreeTypeFont:
+    """Lora — serifada editorial (títulos, texto principal)."""
+    if italic:
+        nome = "Lora-BoldItalic.ttf" if bold else "Lora-Italic.ttf"
     else:
-        fontes = [
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/calibri.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        ]
-    for f in fontes:
+        nome = "Lora-Bold.ttf" if bold else "Lora-Regular.ttf"
+    caminho = _fonte_path(nome)
+    if os.path.exists(caminho):
+        return ImageFont.truetype(caminho, tamanho)
+    fallbacks = (
+        ["C:/Windows/Fonts/georgiab.ttf", "C:/Windows/Fonts/arialbd.ttf",
+         "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"]
+        if bold else
+        ["C:/Windows/Fonts/georgia.ttf", "C:/Windows/Fonts/arial.ttf",
+         "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"]
+    )
+    for f in fallbacks:
+        if os.path.exists(f):
+            return ImageFont.truetype(f, tamanho)
+    return ImageFont.load_default()
+
+
+def encontrar_fonte_sans(tamanho: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """InstrumentSans — sem-serifada (labels, badges, UI)."""
+    nome = "InstrumentSans-Bold.ttf" if bold else "InstrumentSans-Regular.ttf"
+    caminho = _fonte_path(nome)
+    if os.path.exists(caminho):
+        return ImageFont.truetype(caminho, tamanho)
+    fallbacks = (
+        ["C:/Windows/Fonts/calibrib.ttf",
+         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]
+        if bold else
+        ["C:/Windows/Fonts/calibri.ttf",
+         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"]
+    )
+    for f in fallbacks:
         if os.path.exists(f):
             return ImageFont.truetype(f, tamanho)
     return ImageFont.load_default()
@@ -87,7 +112,7 @@ def encontrar_fonte(tamanho: int, bold: bool = True) -> ImageFont.FreeTypeFont:
 # ─── Elementos visuais PIL ────────────────────────────────────────────────────
 
 def desenhar_balanca(draw: ImageDraw.ImageDraw, cx: int, cy: int,
-                     tamanho: int = 52, cor=DOURADO):
+                     tamanho: int = 52, cor=DOURADO_OPACO):
     draw.rectangle([cx - 3, cy - tamanho, cx + 3, cy + tamanho // 2], fill=cor)
     draw.rectangle([cx - 30, cy + tamanho // 2 - 3,
                     cx + 30, cy + tamanho // 2 + 6], fill=cor)
@@ -105,7 +130,7 @@ def desenhar_balanca(draw: ImageDraw.ImageDraw, cx: int, cy: int,
 
 
 def desenhar_martelo(draw: ImageDraw.ImageDraw, cx: int, cy: int,
-                     tamanho: int = 40, cor=DOURADO):
+                     tamanho: int = 40, cor=DOURADO_OPACO):
     draw.rectangle([cx - 3, cy, cx + 3, cy + tamanho], fill=cor)
     draw.rounded_rectangle([cx - tamanho // 2, cy - tamanho // 3,
                              cx + tamanho // 2, cy + tamanho // 5],
@@ -113,7 +138,6 @@ def desenhar_martelo(draw: ImageDraw.ImageDraw, cx: int, cy: int,
 
 
 def _desenhar_dots(draw: ImageDraw.ImageDraw, slide_atual: int, total: int):
-    """Indicador de progresso — sobre fundo branco."""
     dot_y   = ALTURA - 48
     dot_r   = 7
     dot_gap = 30
@@ -123,33 +147,61 @@ def _desenhar_dots(draw: ImageDraw.ImageDraw, slide_atual: int, total: int):
         dx = start_x + i * dot_gap
         if i + 1 == slide_atual:
             draw.ellipse([dx - dot_r, dot_y - dot_r,
-                          dx + dot_r, dot_y + dot_r], fill=ROXO_VIBRANTE)
+                          dx + dot_r, dot_y + dot_r], fill=DOURADO_OPACO)
         else:
             draw.ellipse([dx - dot_r, dot_y - dot_r,
-                          dx + dot_r, dot_y + dot_r],
-                         fill=CINZA_SUAVE, outline=ROXO_BORDA, width=2)
+                          dx + dot_r, dot_y + dot_r], fill=CINZA_MEDIO)
 
 
-def _desenhar_carimbo(img: Image.Image):
+def _desenhar_carimbo(img: Image.Image, draw=None):
     """Carimbo 'CULPADO' rotacionado — desordem controlada."""
     stamp = Image.new("RGBA", (340, 100), (0, 0, 0, 0))
     sd    = ImageDraw.Draw(stamp)
 
-    fonte_path = "C:/Windows/Fonts/arialbd.ttf"
-    if os.path.exists(fonte_path):
-        fonte_stamp = ImageFont.truetype(fonte_path, 68)
-    else:
-        fonte_stamp = ImageFont.load_default()
+    fonte_stamp = encontrar_fonte_sans(52, bold=True)
 
     sd.rounded_rectangle([4, 4, 336, 96], radius=10,
                           fill=None, outline=(*VERMELHO_STAMP, 210), width=5)
     sd.text((170, 50), "CULPADO", font=fonte_stamp,
             fill=(*VERMELHO_STAMP, 195), anchor="mm")
 
-    stamp_rot = stamp.rotate(15, expand=True)
-    paste_x = LARGURA - stamp_rot.width - 35
-    paste_y = 215
+    stamp_rot = stamp.rotate(-14, expand=True)
+    paste_x = (LARGURA - 120) - stamp_rot.width // 2
+    paste_y = 130 - stamp_rot.height // 2
     img.paste(stamp_rot, (paste_x, paste_y), stamp_rot)
+
+
+def _rounded_rect(draw: ImageDraw.ImageDraw, xy, radius=16, fill=None, outline=None, width=2):
+    draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=width)
+
+
+def _draw_text_wrapped(draw: ImageDraw.ImageDraw, texto: str, fonte,
+                        cx: int, y_top: int, y_bot: int,
+                        max_w: int = 920, line_spacing: float = 1.45,
+                        cor=None) -> int:
+    """Quebra texto em linhas, centraliza verticalmente e retorna y final."""
+    if cor is None:
+        cor = PRETO_EDITORIAL
+    palavras = texto.split()
+    linhas   = []
+    linha_a  = []
+    for palavra in palavras:
+        linha_a.append(palavra)
+        bbox = draw.textbbox((0, 0), " ".join(linha_a), font=fonte)
+        if (bbox[2] - bbox[0]) > max_w and len(linha_a) > 1:
+            linhas.append(" ".join(linha_a[:-1]))
+            linha_a = [palavra]
+    if linha_a:
+        linhas.append(" ".join(linha_a))
+
+    bbox_s = draw.textbbox((0, 0), "Ag", font=fonte)
+    line_h = int((bbox_s[3] - bbox_s[1]) * line_spacing)
+    total_h = len(linhas) * line_h
+    y = y_top + (y_bot - y_top - total_h) // 2
+    for linha in linhas:
+        draw.text((cx, y), linha, font=fonte, fill=cor, anchor="mm")
+        y += line_h
+    return y
 
 
 # ─── Templates Canva ──────────────────────────────────────────────────────────
@@ -208,7 +260,7 @@ def _processar_template(path: Path, zona: str, texto: str,
     Não apaga nada — o fundo já vem sem texto.
     """
     if cor is None:
-        cor = ROXO_VIBRANTE
+        cor = DOURADO_OPACO
     img  = Image.open(path).convert("RGB")
     draw = ImageDraw.Draw(img)
     W, H = img.size
@@ -274,192 +326,214 @@ def base_slide(template_nome: str | None = None) -> tuple[Image.Image, ImageDraw
 
 # ─── Slides ───────────────────────────────────────────────────────────────────
 
-def slide_intro(roteiro: dict, numero: int, total: int) -> Image.Image:
-    img, draw = base_slide("intro_bg.png")
-    cx = LARGURA // 2
+def slide_intro(titulo: str, crime: str, processo: str = "") -> Image.Image:
+    img  = Image.new("RGB", (LARGURA, ALTURA), CREME_FUNDO)
+    draw = ImageDraw.Draw(img)
+    cx   = LARGURA // 2
 
-    numero_processo = roteiro.get("numero_processo", "")
-    titulo = roteiro.get("titulo", "")
-    crime = roteiro.get("crime", "")
+    # Faixa superior escura (topo)
+    draw.rectangle([0, 0, LARGURA, 90], fill=PRETO_EDITORIAL)
+    f_topo = encontrar_fonte_sans(24)
+    draw.text((cx, 45), "DRA. JULGA  ·  CASO REGISTRADO",
+              font=f_topo, fill=DOURADO_OPACO, anchor="mm")
 
-    # Contador sutil
-    fonte_num = encontrar_fonte(22, bold=False)
-    draw.text((cx, 30), f"{numero}/{total}", font=fonte_num,
-              fill=CINZA_MEDIO, anchor="mt")
+    # Número do processo (abaixo da faixa)
+    if processo:
+        f_proc = encontrar_fonte_sans(22)
+        draw.text((cx, 120), f"Processo {processo}",
+                  font=f_proc, fill=CINZA_MEDIO, anchor="mm")
 
-    # Balança dourada — elemento decorativo sobre branco
-    desenhar_balanca(draw, cx, 130, tamanho=52, cor=DOURADO)
+    # Balança dourada
+    desenhar_balanca(draw, cx, 210, tamanho=56, cor=DOURADO_OPACO)
 
-    # "ME JULGA" — título principal
-    fonte_marca = encontrar_fonte(90)
-    draw.text((cx, 280), "ME JULGA", font=fonte_marca,
-              fill=ROXO_PROFUNDO, anchor="mm")
+    # "ME JULGA" — serif bold, grande
+    f_marca = encontrar_fonte(96, bold=True)
+    draw.text((cx, 390), "ME JULGA", font=f_marca,
+              fill=PRETO_EDITORIAL, anchor="mm")
 
-    # Sublinhado dourado
-    draw.rectangle([cx - 120, 324, cx + 120, 329], fill=DOURADO)
+    # Linha dourada dupla abaixo do título
+    draw.rectangle([cx - 200, 440, cx + 200, 443], fill=DOURADO_OPACO)
+    draw.rectangle([cx - 120, 450, cx + 120, 452], fill=DOURADO_OPACO)
 
-    # Número do processo — identificador único do caso
-    if numero_processo:
-        fonte_proc = encontrar_fonte(32, bold=False)
-        draw.text((cx, 370), f"Processo {numero_processo}", font=fonte_proc,
-                  fill=CINZA_MEDIO, anchor="mm")
-
-    # Título do caso
+    # Título do caso em dourado
     if titulo:
-        fonte_titulo = encontrar_fonte(52, bold=True)
-        draw.text((cx, 450), titulo, font=fonte_titulo,
-                  fill=ROXO_VIBRANTE, anchor="mm")
+        f_titulo = encontrar_fonte(54, bold=True)
+        _draw_text_wrapped(draw, titulo, f_titulo, cx, 470, 620,
+                           max_w=860, cor=DOURADO_OPACO)
 
-    # Crime em destaque (se disponível)
+    # Separador pontilhado
+    for x in range(80, LARGURA - 80, 18):
+        draw.rectangle([x, 648, x + 8, 650], fill=BEGE_BORDA)
+
+    # Label CRIME
+    f_crime_label = encontrar_fonte_sans(22, bold=True)
+    draw.text((cx, 685), "C R I M E",
+              font=f_crime_label, fill=CINZA_MEDIO, anchor="mm")
+
+    # Texto do crime
     if crime:
-        fonte_crime = encontrar_fonte(34, bold=False)
-        draw.text((cx, 530), f"Crime: {crime}", font=fonte_crime,
-                  fill=ROXO_PROFUNDO, anchor="mm")
+        f_crime = encontrar_fonte(36, bold=False)
+        _draw_text_wrapped(draw, crime, f_crime, cx, 700, 820,
+                           max_w=860, cor=PRETO_EDITORIAL)
 
-    # Badge "Deslize" — pill com borda, sem fill pesado
-    fonte_badge = encontrar_fonte(28, bold=False)
-    badge_txt   = "Deslize para o veredicto  >>>"
-    draw.rounded_rectangle([180, 800, LARGURA - 180, 858],
-                            radius=30, fill=None,
-                            outline=ROXO_VIBRANTE, width=2)
-    draw.text((cx, 829), badge_txt, font=fonte_badge,
-              fill=ROXO_VIBRANTE, anchor="mm")
-
-    # Rodapé sutil
-    fonte_footer = encontrar_fonte(22, bold=False)
-    draw.text((cx, ALTURA - 28), "@dra.julga  •  mejulga.com.br",
-              font=fonte_footer, fill=CINZA_MEDIO, anchor="mm")
+    # Faixa inferior escura com badge
+    draw.rectangle([0, ALTURA - 160, LARGURA, ALTURA], fill=PRETO_EDITORIAL)
+    f_badge = encontrar_fonte_sans(26)
+    draw.text((cx, ALTURA - 100), "Deslize para o veredicto  >>>",
+              font=f_badge, fill=DOURADO_OPACO, anchor="mm")
+    f_rodape = encontrar_fonte_sans(20)
+    draw.text((cx, ALTURA - 40), "@dra.julga  ·  mejulga.com.br",
+              font=f_rodape, fill=CINZA_MEDIO, anchor="mm")
 
     return img
 
 
-def slide_cena(texto: str, numero_slide: int, total: int) -> Image.Image:
-    img, draw = base_slide("cena_bg.png")
-    cx = LARGURA // 2
+def slide_cena(texto: str, numero: int, label: str = "") -> Image.Image:
+    img  = Image.new("RGB", (LARGURA, ALTURA), CREME_FUNDO)
+    draw = ImageDraw.Draw(img)
+    cx   = LARGURA // 2
 
-    # Contador sutil
-    fonte_num = encontrar_fonte(22, bold=False)
-    draw.text((cx, 28), f"{numero_slide}/{total}", font=fonte_num,
-              fill=CINZA_MEDIO, anchor="mt")
+    # Faixa lateral esquerda — barra dourada fina
+    draw.rectangle([0, 0, 8, ALTURA], fill=DOURADO_OPACO)
 
-    # Texto da cena — ocupa todo o slide sem label acima
-    fonte_texto = encontrar_fonte(62)
-    palavras    = texto.split()
-    linhas      = []
-    linha_atual = []
+    # Contador topo esquerdo
+    f_counter = encontrar_fonte_sans(24)
+    draw.text((60, 52), f"{numero} / 6",
+              font=f_counter, fill=CINZA_MEDIO, anchor="lm")
 
-    for palavra in palavras:
-        linha_atual.append(palavra)
-        linha_teste = " ".join(linha_atual)
-        bbox = draw.textbbox((0, 0), linha_teste, font=fonte_texto)
-        if (bbox[2] - bbox[0]) > 900:
-            if len(linha_atual) > 1:
-                linhas.append(" ".join(linha_atual[:-1]))
-                linha_atual = [palavra]
-            else:
-                linhas.append(linha_teste)
-                linha_atual = []
-    if linha_atual:
-        linhas.append(" ".join(linha_atual))
+    # @dra.julga topo direito
+    draw.text((LARGURA - 60, 52), "@dra.julga",
+              font=f_counter, fill=CINZA_MEDIO, anchor="rm")
 
-    n          = len(linhas)
-    line_h     = 88
-    zona_top   = 80
-    zona_bot   = ALTURA - 100
-    altura_txt = n * line_h
-    y = zona_top + (zona_bot - zona_top - altura_txt) // 2
+    # Linha separadora do cabeçalho
+    draw.rectangle([40, 80, LARGURA - 40, 82], fill=BEGE_BORDA)
 
+    # Label da cena — pill com linhas ornamentais
+    y_texto_top = 160
+    if label:
+        f_label = encontrar_fonte_sans(26, bold=True)
+        lbbox = draw.textbbox((0, 0), label, font=f_label)
+        lw = lbbox[2] - lbbox[0]
+        lh = lbbox[3] - lbbox[1]
+        _rounded_rect(draw,
+                      [cx - lw // 2 - 28, 112,
+                       cx + lw // 2 + 28, 112 + lh + 20],
+                      radius=24, fill=PRETO_EDITORIAL)
+        draw.text((cx, 112 + (lh + 20) // 2), label,
+                  font=f_label, fill=DOURADO_OPACO, anchor="mm")
+        ly = 112 + (lh + 20) // 2
+        draw.rectangle([40, ly - 1, cx - lw // 2 - 40, ly + 1], fill=DOURADO_OPACO)
+        draw.rectangle([cx + lw // 2 + 40, ly - 1, LARGURA - 40, ly + 1], fill=DOURADO_OPACO)
+        y_texto_top = 200
+
+    # Texto principal — Lora Bold, auto-sized, centralizado verticalmente
+    y_texto_bot = ALTURA - 140
+    for sz in range(72, 34, -4):
+        f_texto = encontrar_fonte(sz, bold=True)
+        bbox_s  = draw.textbbox((0, 0), "Ag", font=f_texto)
+        lh      = int((bbox_s[3] - bbox_s[1]) * 1.5)
+        palavras = texto.split()
+        linhas, linha_a = [], []
+        for p in palavras:
+            linha_a.append(p)
+            bbox = draw.textbbox((0, 0), " ".join(linha_a), font=f_texto)
+            if (bbox[2] - bbox[0]) > 940 and len(linha_a) > 1:
+                linhas.append(" ".join(linha_a[:-1]))
+                linha_a = [p]
+        if linha_a:
+            linhas.append(" ".join(linha_a))
+        if len(linhas) * lh <= (y_texto_bot - y_texto_top):
+            break
+
+    bbox_s  = draw.textbbox((0, 0), "Ag", font=f_texto)
+    lh      = int((bbox_s[3] - bbox_s[1]) * 1.5)
+    total_h = len(linhas) * lh
+    y = y_texto_top + (y_texto_bot - y_texto_top - total_h) // 2
     for linha in linhas:
-        draw.text((cx, y), linha, font=fonte_texto,
-                  fill=ROXO_PROFUNDO, anchor="mm")
-        y += line_h
+        draw.text((cx, y), linha, font=f_texto,
+                  fill=PRETO_EDITORIAL, anchor="mm")
+        y += lh
 
-    # Dots de progresso
-    _desenhar_dots(draw, numero_slide, total)
-
-    # Rodapé sutil
-    fonte_footer = encontrar_fonte(20, bold=False)
-    draw.text((cx, ALTURA - 16), "@dra.julga",
-              font=fonte_footer, fill=CINZA_MEDIO, anchor="mm")
+    # Faixa inferior creme escuro com dots
+    draw.rectangle([0, ALTURA - 100, LARGURA, ALTURA], fill=CREME_ESCURO)
+    _desenhar_dots(draw, numero, 6)
+    f_rodape = encontrar_fonte_sans(20)
+    draw.text((cx, ALTURA - 28), "@dra.julga",
+              font=f_rodape, fill=CINZA_MEDIO, anchor="mm")
 
     return img
 
 
-def slide_veredicto(conclusao: str, numero: int, total: int) -> Image.Image:
+def slide_veredicto(veredicto: str, conclusao: str = "") -> Image.Image:
     img, draw = base_slide("veredicto_bg.png")
     cx = LARGURA // 2
 
-    # Contador sutil
-    fonte_num = encontrar_fonte(22, bold=False)
-    draw.text((cx, 28), f"{numero}/{total}", font=fonte_num,
-              fill=CINZA_MEDIO, anchor="mt")
-
     # Martelo dourado
-    desenhar_martelo(draw, cx, 80, tamanho=44, cor=DOURADO)
+    desenhar_martelo(draw, cx, 80, tamanho=44, cor=DOURADO_OPACO)
 
     # "VEREDICTO FINAL" — label com ornamentos
-    fonte_lbl = encontrar_fonte(32, bold=True)
+    fonte_lbl = encontrar_fonte_sans(32, bold=True)
     label     = "VEREDICTO FINAL"
     lbl_bbox  = draw.textbbox((0, 0), label, font=fonte_lbl)
     lbl_w     = lbl_bbox[2] - lbl_bbox[0]
-    draw.text((cx, 168), label, font=fonte_lbl, fill=ROXO_PROFUNDO, anchor="mm")
-    # Linhas ornamentais laterais
-    draw.rectangle([cx - lbl_w // 2 - 70, 168, cx - lbl_w // 2 - 12, 171], fill=DOURADO)
-    draw.rectangle([cx + lbl_w // 2 + 12, 168, cx + lbl_w // 2 + 70, 171], fill=DOURADO)
+    draw.text((cx, 168), label, font=fonte_lbl, fill=PRETO_EDITORIAL, anchor="mm")
+    draw.rectangle([cx - lbl_w // 2 - 70, 168, cx - lbl_w // 2 - 12, 171], fill=DOURADO_OPACO)
+    draw.rectangle([cx + lbl_w // 2 + 12, 168, cx + lbl_w // 2 + 70, 171], fill=DOURADO_OPACO)
 
-    # Caixa do veredicto — fundo cinza suave sobre branco
+    # Caixa do veredicto
     draw.rounded_rectangle([60, 205, LARGURA - 60, 610],
-                           radius=20, fill=CINZA_SUAVE, outline=ROXO_BORDA, width=2)
+                           radius=20, fill=CREME_FUNDO, outline=BEGE_BORDA, width=2)
 
-    # Texto do veredicto
-    fonte_v  = encontrar_fonte(66)
-    palavras = conclusao.split()
-    linhas   = []
-    linha_a  = []
-    for palavra in palavras:
-        linha_a.append(palavra)
-        linha_t = " ".join(linha_a)
-        bbox    = draw.textbbox((0, 0), linha_t, font=fonte_v)
-        if (bbox[2] - bbox[0]) > 840:
-            if len(linha_a) > 1:
+    # Texto do veredicto — Lora auto-sized
+    fonte_v = encontrar_fonte(66, bold=True)
+    linhas = []
+    for sz in range(72, 36, -4):
+        fonte_v = encontrar_fonte(sz, bold=True)
+        bbox_s = draw.textbbox((0, 0), "Ag", font=fonte_v)
+        lh = int((bbox_s[3] - bbox_s[1]) * 1.4)
+        palavras = veredicto.split()
+        linhas, linha_a = [], []
+        for p in palavras:
+            linha_a.append(p)
+            bbox = draw.textbbox((0, 0), " ".join(linha_a), font=fonte_v)
+            if (bbox[2] - bbox[0]) > 840 and len(linha_a) > 1:
                 linhas.append(" ".join(linha_a[:-1]))
-                linha_a = [palavra]
-            else:
-                linhas.append(linha_t)
-                linha_a = []
-    if linha_a:
-        linhas.append(" ".join(linha_a))
+                linha_a = [p]
+        if linha_a:
+            linhas.append(" ".join(linha_a))
+        if len(linhas) * lh <= 380:
+            break
 
-    n      = len(linhas)
-    line_h = 92
-    y      = 205 + (405 - n * line_h) // 2
+    bbox_s = draw.textbbox((0, 0), "Ag", font=fonte_v)
+    line_h = int((bbox_s[3] - bbox_s[1]) * 1.4)
+    y = 205 + (405 - len(linhas) * line_h) // 2
     for linha in linhas:
         draw.text((cx, y), linha, font=fonte_v,
-                  fill=ROXO_PROFUNDO, anchor="mm")
+                  fill=PRETO_EDITORIAL, anchor="mm")
         y += line_h
 
-    # Carimbo CULPADO — desordem controlada
+    # Carimbo CULPADO
     _desenhar_carimbo(img)
 
-    # Bloco CTA — único bloco escuro do slide (âncora visual)
+    # Bloco CTA
     draw.rounded_rectangle([60, 638, LARGURA - 60, 870],
-                           radius=20, fill=ROXO_PROFUNDO)
-    fonte_l1 = encontrar_fonte(34, bold=False)
+                           radius=20, fill=PRETO_EDITORIAL)
+    fonte_l1 = encontrar_fonte_sans(34, bold=False)
     fonte_l2 = encontrar_fonte(38, bold=True)
-    fonte_l3 = encontrar_fonte(48, bold=True)
+    fonte_l3 = encontrar_fonte_sans(48, bold=True)
     draw.text((cx, 682), VEREDICTO_CTA_L1,
               font=fonte_l1, fill=BRANCO_PURO, anchor="mm")
-    draw.text((cx, 729), VEREDICTO_CTA_L2,
+    draw.text((cx, 729), conclusao if conclusao else VEREDICTO_CTA_L2,
               font=fonte_l2, fill=BRANCO_PURO, anchor="mm")
-    draw.rectangle([cx - 90, 752, cx + 90, 755], fill=DOURADO)
+    draw.rectangle([cx - 90, 752, cx + 90, 755], fill=DOURADO_OPACO)
     draw.text((cx, 815), VEREDICTO_CTA_L3,
-              font=fonte_l3, fill=DOURADO, anchor="mm")
+              font=fonte_l3, fill=DOURADO_OPACO, anchor="mm")
 
     # Dots de progresso
-    _desenhar_dots(draw, numero, total)
+    _desenhar_dots(draw, 6, 6)
 
-    # Rodapé sutil
-    fonte_footer = encontrar_fonte(20, bold=False)
+    # Rodapé
+    fonte_footer = encontrar_fonte_sans(20, bold=False)
     draw.text((cx, ALTURA - 16), "@dra.julga",
               font=fonte_footer, fill=CINZA_MEDIO, anchor="mm")
 
@@ -486,13 +560,13 @@ def slide_glossario_capa(glossario: dict, numero: int, total: int) -> Image.Imag
     draw.rounded_rectangle(
         [cx - bw // 2 - pad_h, 110 - bh // 2 - pad_v,
          cx + bw // 2 + pad_h, 110 + bh // 2 + pad_v],
-        radius=24, fill=ROXO_VIBRANTE
+        radius=24, fill=DOURADO_OPACO
     )
     draw.text((cx, 110), badge_txt, font=fonte_badge,
               fill=BRANCO_PURO, anchor="mm")
 
     # Linha dourada
-    draw.rectangle([cx - 140, 160, cx + 140, 165], fill=DOURADO)
+    draw.rectangle([cx - 140, 160, cx + 140, 165], fill=DOURADO_OPACO)
 
     # Termo em destaque — auto-reduz se muito longo
     termo = glossario.get("termo", "")
@@ -505,10 +579,10 @@ def slide_glossario_capa(glossario: dict, numero: int, total: int) -> Image.Imag
             break
 
     draw.text((cx, 480), termo, font=fonte_termo,
-              fill=ROXO_PROFUNDO, anchor="mm")
+              fill=PRETO_EDITORIAL, anchor="mm")
 
     # Linha dourada abaixo do termo
-    draw.rectangle([cx - 100, 535, cx + 100, 539], fill=DOURADO)
+    draw.rectangle([cx - 100, 535, cx + 100, 539], fill=DOURADO_OPACO)
 
     # Pronúncia
     pronuncia = glossario.get("pronuncia", "")
@@ -522,15 +596,15 @@ def slide_glossario_capa(glossario: dict, numero: int, total: int) -> Image.Imag
     if classe:
         fonte_classe = encontrar_fonte(28, bold=False)
         draw.text((cx, 640), classe, font=fonte_classe,
-                  fill=ROXO_BORDA, anchor="mm")
+                  fill=BEGE_BORDA, anchor="mm")
 
     # Badge "Deslize"
     fonte_deslize = encontrar_fonte(28, bold=False)
     draw.rounded_rectangle([180, 800, LARGURA - 180, 858],
                             radius=30, fill=None,
-                            outline=ROXO_VIBRANTE, width=2)
+                            outline=DOURADO_OPACO, width=2)
     draw.text((cx, 829), "Deslize para a definição  >>>",
-              font=fonte_deslize, fill=ROXO_VIBRANTE, anchor="mm")
+              font=fonte_deslize, fill=DOURADO_OPACO, anchor="mm")
 
     # Rodapé
     fonte_footer = encontrar_fonte(22, bold=False)
@@ -561,12 +635,12 @@ def slide_glossario_conteudo(label: str, texto: str,
     draw.rounded_rectangle(
         [cx - lbl_w // 2 - pad_h, 78 - lbl_h // 2 - pad_v,
          cx + lbl_w // 2 + pad_h, 78 + lbl_h // 2 + pad_v],
-        radius=24, fill=CINZA_SUAVE, outline=ROXO_VIBRANTE, width=2
+        radius=24, fill=CREME_FUNDO, outline=DOURADO_OPACO, width=2
     )
-    draw.text((cx, 78), label, font=fonte_lbl, fill=ROXO_VIBRANTE, anchor="mm")
+    draw.text((cx, 78), label, font=fonte_lbl, fill=DOURADO_OPACO, anchor="mm")
 
     # Linha divisória
-    draw.rectangle([80, 122, LARGURA - 80, 124], fill=CINZA_SUAVE)
+    draw.rectangle([80, 122, LARGURA - 80, 124], fill=CREME_FUNDO)
 
     # Texto — auto-sized with word-wrap
     max_w = 900
@@ -599,7 +673,7 @@ def slide_glossario_conteudo(label: str, texto: str,
     y = zona_top + (zona_bot - zona_top - total_h) // 2
     for linha in linhas:
         draw.text((cx, y), linha, font=fonte_txt,
-                  fill=ROXO_PROFUNDO, anchor="mm")
+                  fill=PRETO_EDITORIAL, anchor="mm")
         y += line_h
 
     _desenhar_dots(draw, numero, total)
@@ -638,7 +712,7 @@ def gerar_slides_glossario(glossario: dict, pasta: Path, hoje: str) -> list[Path
 
     print("  Slide 6/6 — veredicto")
     veredicto = glossario.get("veredicto", "Sem apelação.")
-    salvar(slide_veredicto(veredicto, 6, total), 6)
+    salvar(slide_veredicto(veredicto), 6)
 
     return slides
 
@@ -743,7 +817,7 @@ def main():
     total_slides = 6
 
     print("  Slide 1/6 — Intro")
-    s1 = slide_intro(roteiro, 1, total_slides)
+    s1 = slide_intro(roteiro.get("titulo", ""), roteiro.get("crime", ""), roteiro.get("numero_processo", ""))
     p1 = pasta_saida / f"{hoje}_{categoria}_slide_01.png"
     s1.save(str(p1))
     slides.append(p1)
@@ -751,20 +825,20 @@ def main():
     for i, cena in enumerate(cenas):
         n = i + 2
         print(f"  Slide {n}/6 — Cena {i + 1}")
-        img = slide_cena(cena.get("texto_slide") or cena["texto"], n, total_slides)
+        img = slide_cena(cena.get("texto_slide") or cena["texto"], n)
         p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
         img.save(str(p))
         slides.append(p)
 
     for i in range(len(cenas), 4):
         n   = i + 2
-        img = slide_cena("...", n, total_slides)
+        img = slide_cena("...", n)
         p   = pasta_saida / f"{hoje}_{categoria}_slide_0{n}.png"
         img.save(str(p))
         slides.append(p)
 
     print("  Slide 6/6 — Veredicto")
-    s6 = slide_veredicto(conclusao, 6, total_slides)
+    s6 = slide_veredicto(conclusao)
     p6 = pasta_saida / f"{hoje}_{categoria}_slide_06.png"
     s6.save(str(p6))
     slides.append(p6)

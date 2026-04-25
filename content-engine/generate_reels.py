@@ -162,6 +162,21 @@ def _validar_roteiro(roteiro: dict) -> str | None:
                 f"Encurtar para ficar direto e printável."
             )
 
+    # Verifica se alguma cena contém "VEREDICTO" no texto_slide
+    for i, cena in enumerate(roteiro.get("cenas", [])):
+        texto_slide = cena.get("texto_slide", "")
+        if texto_slide.upper().startswith("VEREDICTO"):
+            return f"Cena {i+1}: texto_slide começa com VEREDICTO — deve ir apenas em frase_printavel"
+
+    # Verifica se há pelo menos 5 cenas válidas (não-veredicto, não-CTA)
+    cenas_validas = [
+        c for c in roteiro.get("cenas", [])
+        if not c.get("texto_slide", "").upper().startswith("VEREDICTO")
+        and "mejulga.com.br" not in c.get("texto_slide", "")
+    ]
+    if len(cenas_validas) < 5:
+        return f"Roteiro tem apenas {len(cenas_validas)} cenas válidas — mínimo é 5"
+
     return None
 
 
@@ -328,7 +343,7 @@ Responda SOMENTE com este JSON:
 }}"""
 
     prompt_atual = prompt
-    for tentativa in range(1, 3):  # máximo 2 tentativas
+    for tentativa in range(1, 4):  # máximo 3 tentativas
         resposta = claude_client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2000,
@@ -342,8 +357,8 @@ Responda SOMENTE com este JSON:
             roteiro = json.loads(texto)
         except json.JSONDecodeError as e:
             erro = f"Resposta não é JSON válido: {e}"
-            print(f"⚠️  Tentativa {tentativa}/2 — {erro}")
-            if tentativa < 2:
+            print(f"⚠️  Tentativa {tentativa}/3 — {erro}")
+            if tentativa < 3:
                 prompt_atual = (
                     prompt + f"\n\nATENÇÃO — Sua resposta anterior não era JSON válido.\n"
                     "Responda SOMENTE com JSON válido, sem texto antes ou depois."
@@ -355,15 +370,20 @@ Responda SOMENTE com este JSON:
         if erro is None:
             return roteiro
 
-        print(f"⚠️  Tentativa {tentativa}/2 — roteiro rejeitado: {erro}")
-        if tentativa < 2:
+        print(f"⚠️  Tentativa {tentativa}/3 — roteiro rejeitado: {erro}")
+        if tentativa < 3:
             prompt_atual = (
-                prompt + f"\n\nATENÇÃO — Sua resposta anterior foi rejeitada:\n{erro}\n"
-                "Corrija e responda novamente com JSON válido."
+                prompt_atual + f"\n\nATENÇÃO — Tentativa {tentativa} rejeitada: {erro}\n"
+                f"Corrija ESPECIFICAMENTE: {erro}\n"
+                "Regras críticas:\n"
+                "- NUNCA use 'VEREDICTO' em texto_slide de nenhuma cena\n"
+                "- O veredicto vai APENAS em frase_printavel\n"
+                "- Gere exatamente 5 cenas de conteúdo válidas\n"
+                "Responda SOMENTE com JSON válido."
             )
 
     # Retorna o último gerado mesmo com erro (evita travar o workflow)
-    print("⚠️  Usando roteiro da tentativa 2 sem aprovação — verificar manualmente.")
+    print("⚠️  Usando roteiro da tentativa 3 sem aprovação — verificar manualmente.")
     return roteiro
 
 
@@ -479,7 +499,7 @@ def gerar_glossario(categoria: str, pasta: Path = None) -> dict:
     prompt = _GLOSSARIO_USER_PROMPT.format(categoria=categoria, label=info["label"])
 
     prompt_atual = prompt
-    for tentativa in range(1, 3):
+    for tentativa in range(1, 4):
         resposta = claude_client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=1000,
@@ -492,8 +512,8 @@ def gerar_glossario(categoria: str, pasta: Path = None) -> dict:
         try:
             glossario = json.loads(texto)
         except json.JSONDecodeError as e:
-            print(f"⚠️  Tentativa {tentativa}/2 — JSON inválido: {e}")
-            if tentativa < 2:
+            print(f"⚠️  Tentativa {tentativa}/3 — JSON inválido: {e}")
+            if tentativa < 3:
                 prompt_atual = prompt + "\n\nATENÇÃO — resposta anterior não era JSON válido. Responda SOMENTE com JSON."
             glossario = {}
             continue
@@ -502,11 +522,11 @@ def gerar_glossario(categoria: str, pasta: Path = None) -> dict:
         if erro is None:
             return glossario
 
-        print(f"⚠️  Tentativa {tentativa}/2 — glossário rejeitado: {erro}")
-        if tentativa < 2:
+        print(f"⚠️  Tentativa {tentativa}/3 — glossário rejeitado: {erro}")
+        if tentativa < 3:
             prompt_atual = prompt + f"\n\nATENÇÃO — resposta anterior foi rejeitada:\n{erro}\nCorrija e responda com JSON válido."
 
-    print("⚠️  Usando glossário da tentativa 2 sem aprovação — verificar manualmente.")
+    print("⚠️  Usando glossário da tentativa 3 sem aprovação — verificar manualmente.")
     return glossario
 
 

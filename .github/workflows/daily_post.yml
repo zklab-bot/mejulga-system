@@ -1,294 +1,59 @@
-name: Daily Posts - Dra. Julga
+name: Daily Carrossel — Dra. Julga
 
 on:
   schedule:
-    - cron: '0 12 * * *'   # 09h BRT - carrossel manhã
-    - cron: '0 15 * * *'   # 12h BRT - verdict card almoço
-    - cron: '0 23 * * *'   # 20h BRT - carrossel prime time
-    - cron: '0 1  * * *'   # 22h BRT - verdict card scroll pré-sono
-  workflow_dispatch:
-    inputs:
-      categoria:
-        description: 'Categoria do post'
-        required: false
-        default: ''
-      tipo:
-        description: 'Tipo do post (carrossel, glossario ou verdict_card)'
-        required: false
-        default: ''
-
-concurrency:
-  group: daily-post
-  cancel-in-progress: false
-
-env:
-  META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-  IG_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - cron: "0 15 * * *"   # 12h BRT
+    - cron: "0 21 * * *"   # 18h BRT
+    - cron: "0 0 * * *"    # 21h BRT
+  workflow_dispatch:        # permite rodar manualmente
 
 jobs:
-  publicar:
+  post:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write       # necessário para commitar category_state.json
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          python-version: '3.11'
+          token: ${{ secrets.GH_PAT }}
 
-      - name: Instalar dependencias
-        run: pip install pillow anthropic python-dotenv requests
-
-      - name: Definir categoria e tipo
-        id: categoria
-        run: |
-          HORA=$(date -u +"%H" | sed 's/^0//')
-          DIA=$(date -u +"%u")
-          IDX=$(( (DIA - 1) % 7 ))
-
-          MANUAL="${{ github.event.inputs.categoria }}"
-          MANUAL_TIPO="${{ github.event.inputs.tipo }}"
-          if [ -n "$MANUAL" ]; then
-            echo "categoria=$MANUAL" >> $GITHUB_OUTPUT
-            TIPO="${MANUAL_TIPO:-carrossel}"
-            echo "tipo=$TIPO" >> $GITHUB_OUTPUT
-            echo "data_roteiro=$(date -u +"%Y-%m-%d")" >> $GITHUB_OUTPUT
-            # formato para compatibilidade com steps antigos
-            if [ "$TIPO" = "glossario" ]; then
-              echo "formato=glossario" >> $GITHUB_OUTPUT
-            else
-              echo "formato=carrossel" >> $GITHUB_OUTPUT
-            fi
-            echo "Categoria (manual): $MANUAL | Tipo: $TIPO"
-            exit 0
-          fi
-
-          # Slot A (12h UTC) e Slot C (23h UTC) = carrosséis
-          # Slot B (15h UTC) = verdict card do slot A (mesma categoria)
-          # Slot D (01h UTC) = verdict card do slot C (mesma categoria)
-          declare -a SLOT_A=("dinheiro"    "amor"        "trabalho"     "dopamina"     "vida_adulta"  "social"       "saude_mental")
-          declare -a SLOT_C=("dopamina"    "vida_adulta" "social"       "saude_mental" "dinheiro"     "amor"         "trabalho")
-
-          if   [ "$HORA" = "12" ]; then
-            CATEGORIA="${SLOT_A[$IDX]}"
-            TIPO="carrossel"
-            DATA_ROTEIRO=$(date -u +"%Y-%m-%d")
-          elif [ "$HORA" = "15" ]; then
-            CATEGORIA="${SLOT_A[$IDX]}"   # mesmo do carrossel das 12h
-            TIPO="verdict_card"
-            DATA_ROTEIRO=$(date -u +"%Y-%m-%d")
-          elif [ "$HORA" = "23" ]; then
-            CATEGORIA="${SLOT_C[$IDX]}"
-            TIPO="carrossel"
-            DATA_ROTEIRO=$(date -u +"%Y-%m-%d")
-          else
-            # 1h UTC = 22h BRT — verdict card do carrossel das 23h do dia anterior
-            if [ "$DIA" -gt 1 ]; then
-              DIA_ONTEM=$(( DIA - 1 ))
-            else
-              DIA_ONTEM=7
-            fi
-            IDX_ONTEM=$(( (DIA_ONTEM - 1) % 7 ))
-            CATEGORIA="${SLOT_C[$IDX_ONTEM]}"   # categoria do dia anterior
-            TIPO="verdict_card"
-            DATA_ROTEIRO=$(date -u -d "yesterday" +"%Y-%m-%d")
-          fi
-
-          # Glossário: quarta-feira (DIA=3) no slot 23h UTC
-          if [ "$DIA" = "3" ] && [ "$HORA" = "23" ]; then
-            TIPO="glossario"
-          fi
-
-          echo "categoria=$CATEGORIA" >> $GITHUB_OUTPUT
-          echo "tipo=$TIPO" >> $GITHUB_OUTPUT
-          echo "data_roteiro=$DATA_ROTEIRO" >> $GITHUB_OUTPUT
-          # formato para compatibilidade
-          if [ "$TIPO" = "glossario" ]; then
-            echo "formato=glossario" >> $GITHUB_OUTPUT
-          else
-            echo "formato=carrossel" >> $GITHUB_OUTPUT
-          fi
-          echo "Categoria (slot ${HORA}h UTC): $CATEGORIA | Tipo: $TIPO | Data roteiro: $DATA_ROTEIRO"
-
-      - name: Verificar duplicata
-        id: dedup
-        run: |
-          HOJE=$(date -u +"%Y-%m-%d")
-          TIPO="${{ steps.categoria.outputs.tipo }}"
-          CAT="${{ steps.categoria.outputs.categoria }}"
-          if [ "$TIPO" = "glossario" ]; then
-            CHAVE="${HOJE}_${CAT}_glossario"
-          elif [ "$TIPO" = "verdict_card" ]; then
-            CHAVE="${HOJE}_${CAT}_verdict_card"
-          else
-            CHAVE="${HOJE}_${CAT}"
-          fi
-          echo "chave=$CHAVE" >> $GITHUB_OUTPUT
-          STATE="content-engine/generated/engagement_state.json"
-
-          if [ ! -f "$STATE" ]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          JA_PUBLICADO=$(CHAVE="$CHAVE" python3 -c "import json,os; s=json.load(open('content-engine/generated/engagement_state.json')); print('true' if os.environ['CHAVE'] in s.get('posts_published',[]) else 'false')")
-          echo "skip=$JA_PUBLICADO" >> $GITHUB_OUTPUT
-          if [ "$JA_PUBLICADO" = "true" ]; then
-            echo "Post '$CHAVE' ja publicado hoje - pulando."
-          fi
-
-      - name: Notificar post pulado
-        if: steps.dedup.outputs.skip == 'true'
-        run: |
-          cd content-engine
-          python -m notify send_post_skipped --categoria ${{ steps.categoria.outputs.categoria }}
-
-      # ── Carrossel / Glossário ─────────────────────────────────────────────────
-
-      - name: Gerar roteiro
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo != 'verdict_card'
-        run: cd content-engine && python generate_reels.py --categoria ${{ steps.categoria.outputs.categoria }} --formato ${{ steps.categoria.outputs.formato }} --sem_audio
-
-      - name: Gerar slides do carrossel
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo != 'verdict_card'
-        run: cd content-engine && python gerar_carrossel.py --categoria ${{ steps.categoria.outputs.categoria }} --formato ${{ steps.categoria.outputs.formato }}
-
-      - name: Publicar carrossel no Instagram
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo != 'verdict_card'
-        id: publicar
-        run: |
-          cd content-engine
-          HORA=$(date -u +"%Hh%M")
-          MEDIA_ID=$(python post_carrossel_instagram.py \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --formato ${{ steps.categoria.outputs.formato }} \
-            --output-id)
-          echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
-          echo "hora=$HORA" >> $GITHUB_OUTPUT
-
-      - name: Notificar falha carrossel
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo != 'verdict_card' && failure() && steps.publicar.outcome == 'failure'
-        run: |
-          cd content-engine
-          python3 -c "import sys; sys.path.insert(0,'.'); from engagement.shared import state; state.log_error('post_carrossel','Falha no step de publicacao')"
-          HORA=$(date -u +"%Hh%M")
-          python -m notify send_post_failed \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --hora "${HORA}" \
-            --erro "Falha ao publicar carrossel - verifique GitHub Actions"
-
-      # ── Verdict Card ──────────────────────────────────────────────────────────
-
-      - name: Gerar verdict card
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo == 'verdict_card'
-        run: cd content-engine && python gerar_verdict_card.py --categoria ${{ steps.categoria.outputs.categoria }} --data ${{ steps.categoria.outputs.data_roteiro }}
-
-      - name: Publicar verdict card no Instagram
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo == 'verdict_card'
-        id: publicar_vc
-        run: |
-          cd content-engine
-          HORA=$(date -u +"%Hh%M")
-          MEDIA_ID=$(python post_verdict_card_instagram.py \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --data ${{ steps.categoria.outputs.data_roteiro }} \
-            --output-id)
-          echo "media_id=$MEDIA_ID" >> $GITHUB_OUTPUT
-          echo "hora=$HORA" >> $GITHUB_OUTPUT
-
-      - name: Notificar falha verdict card
-        if: steps.dedup.outputs.skip != 'true' && steps.categoria.outputs.tipo == 'verdict_card' && failure() && steps.publicar_vc.outcome == 'failure'
-        run: |
-          HORA=$(date -u +"%Hh%M")
-          cd content-engine && python -m notify send_post_failed \
-            --categoria ${{ steps.categoria.outputs.categoria }} \
-            --hora "${HORA}" \
-            --erro "Falha ao publicar verdict card - verifique GitHub Actions"
-
-      # ── Pós-publicação (ambos os tipos) ───────────────────────────────────────
-
-      - name: Resolver media_id final
-        if: steps.dedup.outputs.skip != 'true'
-        id: media
-        run: |
-          if [ -n "${{ steps.publicar.outputs.media_id }}" ]; then
-            echo "media_id=${{ steps.publicar.outputs.media_id }}" >> $GITHUB_OUTPUT
-            echo "hora=${{ steps.publicar.outputs.hora }}" >> $GITHUB_OUTPUT
-          else
-            echo "media_id=${{ steps.publicar_vc.outputs.media_id }}" >> $GITHUB_OUTPUT
-            echo "hora=${{ steps.publicar_vc.outputs.hora }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Registrar post publicado
-        if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
-        run: |
-          CHAVE="${{ steps.dedup.outputs.chave }}"
-          CHAVE="$CHAVE" python3 -c "import json,os; f='content-engine/generated/engagement_state.json'; d=json.load(open(f)) if os.path.exists(f) else {}; p=d.setdefault('posts_published',[]); c=os.environ['CHAVE']; c not in p and p.append(c); os.makedirs(os.path.dirname(f),exist_ok=True); json.dump(d,open(f,'w'),ensure_ascii=False,indent=2); print('Registrado:',c)"
-
-      - name: Notificar post publicado
-        if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
-        continue-on-error: true
-        run: |
-          cd content-engine
-          HOJE=$(date -u +"%Y-%m-%d")
-          CAT="${{ steps.categoria.outputs.categoria }}"
-          TIPO="${{ steps.categoria.outputs.tipo }}"
-          if [ "$TIPO" = "glossario" ]; then
-            TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_glossario.json'); print(json.load(open(f[0])).get('termo',c) if f else c)")
-          else
-            TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
-          fi
-          python -m notify send_post_published \
-            --categoria "$CAT" \
-            --titulo "$TITULO" \
-            --hora "${{ steps.media.outputs.hora }}" \
-            --media_id ${{ steps.media.outputs.media_id }}
-
-      - name: Enviar votacao no Telegram
-        if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != '' && steps.categoria.outputs.tipo == 'carrossel'
-        continue-on-error: true
-        run: |
-          cd content-engine
-          CAT="${{ steps.categoria.outputs.categoria }}"
-          CHAVE="${{ steps.dedup.outputs.chave }}"
-          TIPO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('tipo_veredicto','A') if f else 'A')")
-          TITULO=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('titulo',c) if f else c)")
-          CRIME=$(CAT="$CAT" python3 -c "import json,glob,os; from datetime import datetime; h=datetime.utcnow().strftime('%Y-%m-%d'); c=os.environ['CAT']; f=glob.glob('generated/reels/'+h+'_'+c+'_reels.json'); print(json.load(open(f[0])).get('crime','') if f else '')")
-          python -m engagement.feedback send_rating_request \
-            --chave "$CHAVE" \
-            --media_id ${{ steps.media.outputs.media_id }} \
-            --tipo_veredicto "$TIPO" \
-            --titulo "$TITULO" \
-            --crime "$CRIME" \
-            --categoria "$CAT"
-
-      - name: Postar comentario de engajamento
-        if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
-        continue-on-error: true
-        run: |
-          cd content-engine
-          python -m engagement.post_engagement \
-            --media_id ${{ steps.media.outputs.media_id }} \
-            --categoria ${{ steps.categoria.outputs.categoria }}
-
-      - name: Notificar comentario de votacao
-        if: steps.dedup.outputs.skip != 'true' && steps.media.outputs.media_id != ''
-        continue-on-error: true
-        run: |
-          cd content-engine
-          python -m notify send_voting_comment --media_id ${{ steps.media.outputs.media_id }}
-
-      - name: Commit do estado e slides gerados
-        if: always() && steps.dedup.outputs.skip != 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          commit_message: "chore: post ${{ steps.categoria.outputs.categoria }} (${{ steps.categoria.outputs.tipo }}) publicado [skip ci]"
-          file_pattern: |
-            content-engine/generated/engagement_state.json
-            content-engine/generated/reels/
+          python-version: "3.11"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python deps
+        run: |
+          cd content-engine
+          pip install -r requirements.txt
+
+      - name: Install Node deps + Playwright
+        run: |
+          npm install
+          npx playwright install chromium --with-deps
+
+      - name: Run pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          cd content-engine
+          python run_pipeline.py
+
+      - name: Commit category state
+        run: |
+          git config user.name "zklab-bot"
+          git config user.email "bot@zklab.com.br"
+          git add category_state.json
+          git diff --staged --quiet || git commit -m "chore: update category rotation state [skip ci]"
+          git push

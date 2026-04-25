@@ -16,15 +16,32 @@ Se demorar mais de 0,7 segundos para ler, o usuário já foi.
 
 ---
 
+## Paleta Principal
+
+- Fundo claro:  #F5F0E8 (creme)
+- Fundo escuro: #0D0D0D (preto editorial) — hooks L5/C1/C4
+- Texto:        #0D0D0D / #1A1410
+- Destaque:     #C8A97E (dourado opaco)
+- Carimbo:      #B03020 (vermelho queimado)
+- Bordas:       #E8E0D0
+
 ## Fundo por Tipo de Slide
 
 | Slide | Fundo padrão | Exceção |
 |-------|-------------|---------|
-| Capa (hook V/C) | Claro (#F5F3F0) | Hook de evidência → escuro |
-| Capa (hook L5 — crime não revelado) | Escuro (#1A1A1A) | — |
+| Capa (hook V/C) | Claro (#F5F0E8) | Hook de evidência → escuro |
+| Capa (hook L5 — crime não revelado) | Escuro (#0D0D0D) | — |
 | Slides 2–5 (provas) | Claro | Prova mais pesada → escuro |
-| Slide 6 (veredicto) | Claro com destaque roxo | — |
+| Slide 6 (veredicto) | Claro com destaque dourado | — |
 | Slide 7 (CTA) | Claro | — |
+
+## Carimbo CULPADO
+
+- Posição: canto superior direito do slide 6
+- Offset: 120px da borda direita, 130px do topo
+- Rotação: −14° (leve, como carimbo humano)
+- Opacidade: 80%
+- Estilo: dois anéis elípticos + texto circular "CULPADO" + "DRA. JULGA" centralizado
 
 ---
 
